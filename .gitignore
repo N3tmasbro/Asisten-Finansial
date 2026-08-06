@@ -1,0 +1,52 @@
+# Root .gitignore to protect secrets and avoid uploading build artifacts
+
+# Node dependencies
+**/node_modules/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+
+# PHP/Laravel dependencies
+**/vendor/
+**/.phpunit.result.cache
+**/.php-cs-fixer.cache
+
+# Environment files (CRITICAL: DO NOT REMOVE)
+**/.env
+**/.env.production
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+
+# Next.js build output
+**/.next/
+**/out/
+
+# Laravel storage and uploads
+**/storage/framework/cache/data/*
+!**/storage/framework/cache/data/.gitkeep
+**/storage/framework/sessions/*
+!**/storage/framework/sessions/.gitkeep
+**/storage/framework/testing/*
+!**/storage/framework/testing/.gitkeep
+**/storage/framework/views/*
+!**/storage/framework/views/.gitkeep
+**/storage/logs/*
+!**/storage/logs/.gitkeep
+**/storage/app/public/*
+!**/storage/app/public/.gitkeep
+**/*.key
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

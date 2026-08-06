@@ -1,0 +1,18 @@
+{
+  "name": "whatsapp-bridge",
+  "version": "1.0.0",
+  "description": "WhatsApp bridge using Baileys - forwards messages between WhatsApp and Laravel backend",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.16",
+    "axios": "^1.19.0",
+    "dotenv": "^17.4.2",
+    "express": "^4.21.0",
+    "pino": "^9.6.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
