@@ -104,3 +104,45 @@ Proyek ini menggunakan auto-linking via WhatsApp LID. Begitu Anda mengirim pesan
 4. Sistem di latar belakang akan otomatis memetakan identitas WhatsApp Anda (LID) ke akun pengguna di database.
 5. Bot akan membalas pesan Anda ("Sip, transaksi kamu udah berhasil dicatat ya!...") sebagai tanda verifikasi & pencatatan berhasil karena di-parsing oleh AI.
 6. Refresh halaman **Dashboard** atau menu **Pengaturan** di browser (`http://localhost:3000/settings`) untuk melihat data profil asli Anda beserta riwayat transaksi yang baru saja dicatat.
+
+---
+
+## 🛠️ Troubleshooting (Masalah Umum & Solusinya)
+
+### 1. Pesan WhatsApp Tidak Dibalas / Tidak Masuk ke Database
+* **Gejala:** Bot WA `Online` dan sudah tersambung, tapi pesan tidak direspon dan log di terminal WhatsApp Bridge menunjukkan pesan error seperti:
+  `Failed to decrypt message with any known session... MessageCounterError: Key used already or never filled`
+* **Penyebab:** Bot sempat offline cukup lama (misal: 2 hari) sehingga sesi enkripsi *end-to-end* (E2EE) dengan WhatsApp server menjadi kadaluarsa atau korup (stale session).
+* **Solusi:** 
+  1. Matikan proses WhatsApp Bridge (tekan `Ctrl+C`).
+  2. Hapus folder sesi penyimpanan kredensial:
+     ```bash
+     cd whatsapp-bridge
+     Remove-Item -Path "auth_state" -Recurse -Force
+     ```
+  3. Jalankan ulang `npm start` lalu *scan* ulang QR Code baru yang muncul dengan aplikasi WhatsApp di HP Bot Anda.
+
+### 2. Error EADDRINUSE :::3001 Saat Menjalankan WhatsApp Bridge
+* **Gejala:** Saat menjalankan `npm start` muncul error `Error: listen EADDRINUSE: address already in use :::3001`.
+* **Penyebab:** Ada proses WhatsApp Bridge lama yang masih berjalan di latar belakang (background process) dan sedang memakai port 3001.
+* **Solusi:** Matikan proses Node.js yang sedang menggunakan port tersebut, atau matikan *background task* di IDE Anda sebelum menjalankan ulang dari terminal manual.
+
+### 3. Queue Worker (Pemroses AI) Berhenti Sendiri Tanpa Output
+* **Gejala:** Saat menjalankan `php artisan queue:work --tries=3`, perintah langsung selesai (exit) tanpa pesan error apapun.
+* **Penyebab:** Terdapat sinyal `queue:restart` usang yang tersimpan di cache aplikasi (sehingga saat worker hidup, ia langsung membaca perintah untuk mati).
+* **Solusi:** Bersihkan seluruh *cache* Laravel sebelum menjalankan worker:
+  ```bash
+  php artisan cache:clear
+  php artisan config:clear
+  php artisan queue:work --tries=3 --sleep=3
+  ```
+  *(Sebagai alternatif yang lebih tangguh, Anda bisa menggunakan `php artisan queue:listen --tries=3` agar worker tidak pernah mati meskipun terjadi error kode).*
+
+### 4. Limit AI Gemini Habis (429 Too Many Requests)
+* **Gejala:** Error `429` di log Queue Worker dan AI berhenti membalas dengan benar.
+* **Solusi:**
+  Proyek ini sekarang sudah dilengkapi sistem **Auto-Fallback Model**. Ubah konfigurasi `GEMINI_MODEL` di file `.env` ke versi `Lite` yang memiliki limit harian jauh lebih tinggi (500 permintaan/hari dibanding versi standard yang hanya 20/hari):
+  ```env
+  GEMINI_MODEL=gemini-3.1-flash-lite
+  ```
+  *(Setelah diubah, selalu ingat untuk menjalankan `php artisan config:clear`).*

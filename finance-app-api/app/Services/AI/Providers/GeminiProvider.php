@@ -12,14 +12,44 @@ use Illuminate\Support\Facades\Log;
 class GeminiProvider implements AIProviderInterface
 {
     private string $apiKey;
-    private string $model;
-    private string $baseUrl;
+
+    /**
+     * Ordered fallback list — tried top-to-bottom when a model hits rate limits (429) or is unavailable (404).
+     * Sorted by free-tier RPD (Requests Per Day) from highest to lowest.
+     *
+     * Model            RPD   RPM
+     * gemini-3.1-flash-lite  500   15
+     * gemini-3.5-flash-lite  500   15
+     * gemini-2.5-flash-lite   20   10
+     * gemini-2.5-flash        20    5
+     * gemini-3.5-flash        20    5
+     * gemini-flash-latest     20    5   (resolves to latest flash)
+     */
+    private array $fallbackModels;
+
+    private string $baseApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
 
     public function __construct()
     {
         $this->apiKey = config('services.gemini.api_key', '');
-        $this->model = config('services.gemini.model', 'gemini-1.5-flash');
-        $this->baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent";
+
+        // Primary model from config, then fallback chain by RPD limit
+        $configuredModel = config('services.gemini.model', 'gemini-3.1-flash-lite');
+
+        $allFallbacks = [
+            'gemini-3.1-flash-lite',   // 500 RPD
+            'gemini-3.5-flash-lite',   // 500 RPD
+            'gemini-2.5-flash-lite',   //  20 RPD
+            'gemini-2.5-flash',        //  20 RPD
+            'gemini-3.5-flash',        //  20 RPD
+            'gemini-flash-latest',     //  20 RPD (alias)
+        ];
+
+        // Put configured model first, then the rest (deduped)
+        $this->fallbackModels = array_values(array_unique(array_merge(
+            [$configuredModel],
+            $allFallbacks
+        )));
     }
 
     public function classifyIntent(string $message, array $context = []): IntentClassificationDTO
@@ -143,50 +173,75 @@ PROMPT;
 
     private function callGemini(string $systemPrompt, string $userMessage): string
     {
-        try {
-            $response = Http::withHeaders([
-                'Content-Type' => 'application/json',
-            ])->post("{$this->baseUrl}?key={$this->apiKey}", [
-                'system_instruction' => [
-                    'parts' => [
-                        ['text' => $systemPrompt]
-                    ]
-                ],
-                'contents' => [
-                    [
-                        'parts' => [
-                            ['text' => $userMessage]
-                        ]
-                    ]
-                ],
-                'generationConfig' => [
-                    'temperature' => 0.1,
-                    'topK' => 40,
-                    'topP' => 0.95,
-                    'maxOutputTokens' => 1024,
-                ]
-            ]);
+        $payload = [
+            'system_instruction' => [
+                'parts' => [['text' => $systemPrompt]]
+            ],
+            'contents' => [
+                ['parts' => [['text' => $userMessage]]]
+            ],
+            'generationConfig' => [
+                'temperature'     => 0.1,
+                'topK'            => 40,
+                'topP'            => 0.95,
+                'maxOutputTokens' => 1024,
+            ],
+        ];
 
-            if ($response->successful()) {
-                $candidates = $response->json('candidates', []);
-                if (empty($candidates)) {
-                    return '{}';
+        foreach ($this->fallbackModels as $model) {
+            $url = "{$this->baseApiUrl}/{$model}:generateContent?key={$this->apiKey}";
+
+            try {
+                $response = Http::withHeaders(['Content-Type' => 'application/json'])
+                    ->timeout(20)
+                    ->post($url, $payload);
+
+                if ($response->successful()) {
+                    $candidates = $response->json('candidates', []);
+                    if (!empty($candidates)) {
+                        $text = $candidates[0]['content']['parts'][0]['text'] ?? '{}';
+
+                        if ($model !== $this->fallbackModels[0]) {
+                            Log::info('Gemini fallback used', ['model' => $model]);
+                        }
+
+                        return $text;
+                    }
+                    // Empty candidates — try next model
+                    continue;
                 }
-                
-                $text = $candidates[0]['content']['parts'][0]['text'] ?? '{}';
-                return $text;
+
+                $status = $response->status();
+
+                // 429 = rate limit exceeded, 404 = model not available — try next model
+                if ($status === 429 || $status === 404) {
+                    Log::warning('Gemini model unavailable, trying fallback', [
+                        'model'  => $model,
+                        'status' => $status,
+                    ]);
+                    continue;
+                }
+
+                // Any other error (400, 500, etc.) — log and abort
+                Log::error('Gemini API error', [
+                    'model'  => $model,
+                    'status' => $status,
+                    'body'   => $response->body(),
+                ]);
+                return '{}';
+
+            } catch (\Exception $e) {
+                Log::warning('Gemini model exception, trying fallback', [
+                    'model'   => $model,
+                    'message' => $e->getMessage(),
+                ]);
+                continue;
             }
-
-            Log::error('Gemini API error', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            return '{}';
-        } catch (\Exception $e) {
-            Log::error('Gemini API exception', ['message' => $e->getMessage()]);
-            return '{}';
         }
+
+        // All models exhausted
+        Log::error('All Gemini fallback models exhausted — no response available.');
+        return '{}';
     }
 
     private function parseJsonResponse(string $response): array
