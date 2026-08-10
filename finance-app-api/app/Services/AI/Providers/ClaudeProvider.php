@@ -3,6 +3,7 @@
 namespace App\Services\AI\Providers;
 
 use App\Contracts\AIProviderInterface;
+use App\DTOs\FinancialCommandDTO;
 use App\DTOs\IntentClassificationDTO;
 use App\DTOs\ParsedTransactionDTO;
 use App\DTOs\QueryParametersDTO;
@@ -28,8 +29,11 @@ Kamu adalah classifier pesan untuk aplikasi pencatat keuangan. Tugasmu HANYA men
 
 Intent yang tersedia:
 - "add_transaction": user ingin mencatat pengeluaran atau pemasukan (contoh: "isi bensin 200 ribu", "beli kopi 20rb", "gajian 5 juta")
-- "query_report": user ingin bertanya tentang keuangannya (contoh: "bulan ini habis berapa?", "pengeluaran makan minggu ini")
-- "correction": user ingin mengoreksi transaksi yang sudah dicatat (contoh: "eh yang tadi salah", "koreksi yang bensin jadi 250rb")
+- "query_report": user ingin bertanya tentang keuangannya (contoh: "bulan ini habis berapa?", "pengeluaran makan minggu ini", "ringkasan bulan ini")
+- "correction": user ingin mengoreksi/mengubah transaksi yang sudah dicatat (contoh: "eh yang tadi salah", "koreksi yang bensin jadi 250rb", "yang kopi tadi harusnya Hiburan")
+- "delete_transaction": user ingin menghapus transaksi (contoh: "hapus yang bensin tadi", "delete transaksi terakhir", "batalkan yang kopi")
+- "inspect_records": user ingin melihat data tanpa mengubah (contoh: "transaksi terakhir apa?", "saldo BCA berapa?", "daftar wallet", "budget makan bulan ini?")
+- "manage_records": user ingin membuat/mengubah wallet, kategori, atau budget (contoh: "buat wallet Dana", "tambah kategori Investasi", "buat budget makan 2 juta")
 - "greeting_smalltalk": sapaan atau obrolan ringan (contoh: "halo", "terima kasih", "siapa kamu?")
 - "unclear": pesan tidak jelas atau tidak terkait keuangan
 
@@ -112,6 +116,58 @@ PROMPT;
         $data = $this->parseJsonResponse($response);
 
         return QueryParametersDTO::fromAIResponse($data);
+    }
+
+    public function parseFinancialCommand(string $message, array $context = []): FinancialCommandDTO
+    {
+        $systemPrompt = <<<PROMPT
+Kamu adalah parser perintah keuangan. Tugasmu mengubah pesan user menjadi structured command JSON.
+
+ATURAN KETAT:
+1. JANGAN pernah mengarang transaction_id, wallet_id, atau category_id
+2. Untuk target transaksi, gunakan deskripsi/jumlah/tanggal yang disebut user
+3. Untuk wallet/category, gunakan NAMA yang disebut user (backend yang resolve ke ID)
+4. Konversi angka: "20rb"/"20ribu"/"20k" = 20000, "1,5jt"/"1.5juta" = 1500000
+5. Jika user tidak menyebut tanggal, jangan isi date
+6. Jika user tidak menyebut wallet, jangan isi wallet
+7. Confidence: 0.0-1.0 berdasar kejelasan pesan user
+
+ACTIONS: update_transaction, delete_transaction, create_wallet, rename_wallet, create_category, rename_category, create_budget, update_budget, delete_budget
+
+FORMAT OUTPUT (JSON ketat):
+{"action":"...","target":{"description":null,"amount":null,"category":null,"wallet":null,"date":null},"changes":{"amount":null,"category":null,"wallet":null,"description":null,"date":null,"type":null},"data":{"name":null,"type":null,"amount":null,"category":null,"period":null,"old_name":null,"new_name":null},"confidence":0.0}
+
+Isi HANYA field yang relevan. Sisanya null. Jangan tambahkan penjelasan apapun di luar JSON.
+PROMPT;
+
+        // Build context string
+        $contextParts = ['[CONTEXT]'];
+
+        if (!empty($context['recent_transactions'])) {
+            $contextParts[] = 'Transaksi terbaru:';
+            foreach ($context['recent_transactions'] as $i => $tx) {
+                $amount = number_format($tx['amount'] ?? 0, 0, ',', '.');
+                $contextParts[] = ($i + 1) . ". {$tx['description']} — Rp{$amount} — {$tx['category']} — {$tx['wallet']} — {$tx['date']}";
+            }
+        }
+
+        if (!empty($context['wallets'])) {
+            $contextParts[] = 'Wallet: ' . implode(', ', $context['wallets']);
+        }
+
+        if (!empty($context['categories_expense'])) {
+            $contextParts[] = 'Kategori expense: ' . implode(', ', $context['categories_expense']);
+        }
+
+        $contextParts[] = '';
+        $contextParts[] = '[PESAN USER]';
+        $contextParts[] = $message;
+
+        $userMessage = implode("\n", $contextParts);
+        $response = $this->callClaude($systemPrompt, $userMessage);
+        $data = $this->parseJsonResponse($response);
+
+        return FinancialCommandDTO::fromAIResponse($data, $message);
     }
 
     public function formatResponse(string $type, array $data, array $context = []): string

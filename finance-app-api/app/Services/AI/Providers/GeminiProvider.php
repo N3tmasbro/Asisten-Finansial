@@ -3,6 +3,7 @@
 namespace App\Services\AI\Providers;
 
 use App\Contracts\AIProviderInterface;
+use App\DTOs\FinancialCommandDTO;
 use App\DTOs\IntentClassificationDTO;
 use App\DTOs\ParsedTransactionDTO;
 use App\DTOs\QueryParametersDTO;
@@ -58,11 +59,28 @@ class GeminiProvider implements AIProviderInterface
 Kamu adalah classifier pesan untuk aplikasi pencatat keuangan. Tugasmu HANYA menentukan intent dari pesan user.
 
 Intent yang tersedia:
-- "add_transaction": user ingin mencatat pengeluaran atau pemasukan (contoh: "isi bensin 200 ribu", "beli kopi 20rb", "gajian 5 juta")
-- "query_report": user ingin bertanya tentang keuangannya (contoh: "bulan ini habis berapa?", "pengeluaran makan minggu ini")
-- "correction": user ingin mengoreksi transaksi yang sudah dicatat (contoh: "eh yang tadi salah", "koreksi yang bensin jadi 250rb")
+- "add_transaction": user ingin mencatat transaksi BARU yang belum ada di sistem (contoh: "isi bensin 200 ribu", "beli kopi 20rb", "gajian 5 juta", "makan siang 35rb")
+- "query_report": user ingin laporan atau statistik keuangan (contoh: "bulan ini habis berapa?", "pengeluaran makan minggu ini", "ringkasan bulan ini", "total pengeluaran")
+- "correction": user ingin MENGUBAH transaksi yang SUDAH ADA di sistem — ditandai kata: "yang tadi", "yang kemarin", "harusnya", "salah", "koreksi", "ubah", "ganti", "ralat", "bukan" (contoh: "yang kopi tadi harusnya Hiburan", "yang bensin salah harusnya 80rb", "koreksi yang tadi jadi 50rb", "bukan BCA tapi Cash")
+- "delete_transaction": user ingin MENGHAPUS transaksi yang sudah ada (contoh: "hapus yang bensin tadi", "delete transaksi terakhir", "batalkan yang kopi", "hilangkan transaksi bensin")
+- "inspect_records": user ingin MELIHAT data yang ada tanpa mengubah apapun (contoh: "saldo BCA berapa?", "saldo semua wallet", "transaksi terakhir apa?", "daftar wallet", "daftar kategori", "budget makan bulan ini?", "riwayat transaksi", "cek saldo")
+- "manage_records": user ingin MEMBUAT atau MENGUBAH wallet/kategori/budget (contoh: "buat wallet Dana", "tambah kategori Investasi", "buat budget makan 2 juta", "rename wallet BCA jadi BCA Digital", "naikkan budget makan jadi 2,5 juta")
 - "greeting_smalltalk": sapaan atau obrolan ringan (contoh: "halo", "terima kasih", "siapa kamu?")
 - "unclear": pesan tidak jelas atau tidak terkait keuangan
+
+ATURAN PENTING — baca ini dengan seksama:
+1. Jika pesan mengandung "yang tadi", "yang kemarin", "harusnya", "salah" = CORRECTION bukan add_transaction
+2. Jika pesan mengandung "saldo", "cek", "daftar", "riwayat", "transaksi terakhir" = INSPECT bukan yang lain
+3. Jika pesan mengandung "buat", "tambah", "rename", "naikkan", "turunkan" untuk wallet/kategori/budget = MANAGE
+4. Jika pesan mengandung "hapus", "delete", "hilangkan" untuk transaksi = DELETE
+5. add_transaction HANYA untuk transaksi yang benar-benar BARU, bukan referensi ke transaksi lama
+
+CONTOH NEGATIF (jangan salah klasifikasi):
+- "yang kopi tadi harusnya Hiburan" → BUKAN add_transaction, ini CORRECTION
+- "yang bensin salah, harusnya 80rb" → BUKAN add_transaction, ini CORRECTION  
+- "saldo semua wallet" → BUKAN query_report, ini INSPECT
+- "daftar wallet" → BUKAN unclear, ini INSPECT
+- "hapus yang bensin tadi" → BUKAN correction, ini DELETE
 
 Balas HANYA dalam format JSON:
 {"intent": "...", "confidence": 0.0-1.0}
@@ -143,6 +161,104 @@ PROMPT;
         $data = $this->parseJsonResponse($response);
 
         return QueryParametersDTO::fromAIResponse($data);
+    }
+
+    public function parseFinancialCommand(string $message, array $context = []): FinancialCommandDTO
+    {
+        $systemPrompt = <<<PROMPT
+Kamu adalah parser perintah keuangan. Tugasmu mengubah pesan user menjadi structured command JSON.
+
+ATURAN KETAT:
+1. JANGAN pernah mengarang transaction_id, wallet_id, atau category_id
+2. Untuk target transaksi, gunakan deskripsi/jumlah/tanggal yang disebut user
+3. Untuk wallet/category, gunakan NAMA yang disebut user (backend yang resolve ke ID)
+4. Konversi angka: "20rb"/"20ribu"/"20k" = 20000, "1,5jt"/"1.5juta" = 1500000
+5. Jika user tidak menyebut tanggal, jangan isi date
+6. Jika user tidak menyebut wallet, jangan isi wallet
+7. Confidence: 0.0-1.0 berdasar kejelasan pesan user
+
+ACTIONS yang tersedia:
+- update_transaction: koreksi transaksi yang sudah ada
+- delete_transaction: hapus transaksi
+- create_wallet: buat wallet baru
+- rename_wallet: ubah nama wallet
+- create_category: buat kategori baru
+- rename_category: ubah nama kategori
+- create_budget: buat budget baru
+- update_budget: ubah jumlah budget
+- delete_budget: hapus budget
+
+FORMAT OUTPUT (JSON ketat):
+{"action":"...","target":{"description":null,"amount":null,"category":null,"wallet":null,"date":null},"changes":{"amount":null,"category":null,"wallet":null,"description":null,"date":null,"type":null},"data":{"name":null,"type":null,"amount":null,"category":null,"period":null,"old_name":null,"new_name":null},"confidence":0.0}
+
+Isi HANYA field yang relevan. Sisanya null.
+
+CONTOH:
+
+User: "yang kopi tadi harusnya 75 ribu"
+{"action":"update_transaction","target":{"description":"kopi"},"changes":{"amount":75000},"data":null,"confidence":0.9}
+
+User: "yang bensin tadi bukan Cash, tapi BCA"
+{"action":"update_transaction","target":{"description":"bensin"},"changes":{"wallet":"BCA"},"data":null,"confidence":0.9}
+
+User: "hapus transaksi makan tadi"
+{"action":"delete_transaction","target":{"description":"makan"},"changes":null,"data":null,"confidence":0.85}
+
+User: "buat wallet Dana"
+{"action":"create_wallet","target":null,"changes":null,"data":{"name":"Dana"},"confidence":0.95}
+
+User: "rename wallet BCA jadi BCA Digital"
+{"action":"rename_wallet","target":null,"changes":null,"data":{"old_name":"BCA","new_name":"BCA Digital"},"confidence":0.9}
+
+User: "buat budget makan 2 juta bulan ini"
+{"action":"create_budget","target":null,"changes":null,"data":{"category":"Makan & Minum","amount":2000000,"period":"monthly"},"confidence":0.9}
+
+User: "budget makan naikkan jadi 2,5 juta"
+{"action":"update_budget","target":null,"changes":null,"data":{"category":"Makan & Minum","amount":2500000},"confidence":0.85}
+
+User: "buat kategori Investasi"
+{"action":"create_category","target":null,"changes":null,"data":{"name":"Investasi","type":"expense"},"confidence":0.95}
+
+User: "yang tadi salah harusnya pemasukan bukan pengeluaran"
+{"action":"update_transaction","target":{"description":null},"changes":{"type":"income"},"data":null,"confidence":0.7}
+
+Jangan tambahkan penjelasan apapun di luar JSON.
+PROMPT;
+
+        // Build context string with recent transactions, wallets, categories
+        $contextParts = ['[CONTEXT]'];
+
+        if (!empty($context['recent_transactions'])) {
+            $contextParts[] = 'Transaksi terbaru:';
+            foreach ($context['recent_transactions'] as $i => $tx) {
+                $amount = number_format($tx['amount'] ?? 0, 0, ',', '.');
+                $date = $tx['date'] ?? 'hari ini';
+                $contextParts[] = ($i + 1) . ". {$tx['description']} — Rp{$amount} — {$tx['category']} — {$tx['wallet']} — {$date}";
+            }
+        }
+
+        if (!empty($context['wallets'])) {
+            $contextParts[] = 'Wallet: ' . implode(', ', $context['wallets']);
+        }
+
+        if (!empty($context['categories_expense'])) {
+            $contextParts[] = 'Kategori expense: ' . implode(', ', $context['categories_expense']);
+        }
+
+        if (!empty($context['categories_income'])) {
+            $contextParts[] = 'Kategori income: ' . implode(', ', $context['categories_income']);
+        }
+
+        $contextParts[] = '';
+        $contextParts[] = '[PESAN USER]';
+        $contextParts[] = $message;
+
+        $userMessage = implode("\n", $contextParts);
+
+        $response = $this->callGemini($systemPrompt, $userMessage);
+        $data = $this->parseJsonResponse($response);
+
+        return FinancialCommandDTO::fromAIResponse($data, $message);
     }
 
     public function formatResponse(string $type, array $data, array $context = []): string

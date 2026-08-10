@@ -3,6 +3,7 @@
 namespace App\Services\AI\Providers;
 
 use App\Contracts\AIProviderInterface;
+use App\DTOs\FinancialCommandDTO;
 use App\DTOs\IntentClassificationDTO;
 use App\DTOs\ParsedTransactionDTO;
 use App\DTOs\QueryParametersDTO;
@@ -19,13 +20,28 @@ class MockAIProvider implements AIProviderInterface
     {
         $message = mb_strtolower($message);
 
+        // Check for delete keywords
+        if (preg_match('/(hapus|delete|hilangkan|batalkan\s+(?:transaksi|yang))/i', $message)) {
+            return new IntentClassificationDTO(MessageIntent::DeleteTransaction, 0.85);
+        }
+
+        // Check for inspect keywords (read-only data viewing)
+        if (preg_match('/(daftar\s+(?:wallet|kategori|budget)|saldo|transaksi\s+terakhir|riwayat|history|detail\s+transaksi|budget\s+\w+\s+(?:bulan|minggu))/i', $message)) {
+            return new IntentClassificationDTO(MessageIntent::InspectRecords, 0.85);
+        }
+
+        // Check for manage keywords (create/rename/update wallet/category/budget)
+        if (preg_match('/(buat\s+(?:wallet|kategori|budget)|tambah\s+(?:wallet|kategori|budget)|rename|ganti\s+nama|ubah\s+(?:nama|budget)|naikkan|turunkan)/i', $message)) {
+            return new IntentClassificationDTO(MessageIntent::ManageRecords, 0.85);
+        }
+
         // Check for correction keywords
-        if (preg_match('/(salah|koreksi|ubah|ganti|bukan|ralat)/i', $message)) {
+        if (preg_match('/(salah|koreksi|ubah|ganti|bukan|ralat|harusnya)/i', $message)) {
             return new IntentClassificationDTO(MessageIntent::Correction, 0.85);
         }
 
         // Check for query keywords
-        if (preg_match('/(berapa|habis|total|pengeluaran|pemasukan|sisa|saldo|ringkasan|summary|trend|prediksi)/i', $message)) {
+        if (preg_match('/(berapa|habis|total|pengeluaran|pemasukan|sisa|ringkasan|summary|trend|prediksi)/i', $message)) {
             return new IntentClassificationDTO(MessageIntent::QueryReport, 0.85);
         }
 
@@ -141,6 +157,105 @@ class MockAIProvider implements AIProviderInterface
             period: $period,
             categoryFilter: $categoryFilter,
         );
+    }
+
+    public function parseFinancialCommand(string $message, array $context = []): FinancialCommandDTO
+    {
+        $messageLower = mb_strtolower($message);
+
+        // Delete transaction
+        if (preg_match('/(hapus|delete|hilangkan)\s+(?:yang\s+|transaksi\s+)?(.+)/i', $messageLower, $matches)) {
+            $description = trim($matches[2]);
+            return FinancialCommandDTO::fromAIResponse([
+                'action' => 'delete_transaction',
+                'target' => ['description' => $description],
+                'confidence' => 0.8,
+            ], $message);
+        }
+
+        // Create wallet
+        if (preg_match('/(?:buat|tambah)\s+wallet\s+(.+)/i', $messageLower, $matches)) {
+            return FinancialCommandDTO::fromAIResponse([
+                'action' => 'create_wallet',
+                'data' => ['name' => trim($matches[1])],
+                'confidence' => 0.9,
+            ], $message);
+        }
+
+        // Rename wallet
+        if (preg_match('/(?:rename|ganti\s+nama)\s+wallet\s+(.+?)\s+(?:jadi|ke|menjadi)\s+(.+)/i', $messageLower, $matches)) {
+            return FinancialCommandDTO::fromAIResponse([
+                'action' => 'rename_wallet',
+                'data' => ['old_name' => trim($matches[1]), 'new_name' => trim($matches[2])],
+                'confidence' => 0.9,
+            ], $message);
+        }
+
+        // Create category
+        if (preg_match('/(?:buat|tambah)\s+kategori\s+(.+)/i', $messageLower, $matches)) {
+            return FinancialCommandDTO::fromAIResponse([
+                'action' => 'create_category',
+                'data' => ['name' => trim($matches[1]), 'type' => 'expense'],
+                'confidence' => 0.9,
+            ], $message);
+        }
+
+        // Create/update budget
+        if (preg_match('/(?:buat|tambah|set)\s+budget\s+(.+?)\s+(\d[\d.,]*\s*(?:ribu|rb|juta|jt|k)?)/i', $messageLower, $matches)) {
+            $amount = $this->extractAmount($matches[2]);
+            return FinancialCommandDTO::fromAIResponse([
+                'action' => 'create_budget',
+                'data' => ['category' => trim($matches[1]), 'amount' => $amount, 'period' => 'monthly'],
+                'confidence' => 0.85,
+            ], $message);
+        }
+
+        // Update budget (naikkan/turunkan)
+        if (preg_match('/budget\s+(.+?)\s+(?:naikkan|turunkan|ubah|jadi)\s+(?:jadi\s+)?(\d[\d.,]*\s*(?:ribu|rb|juta|jt|k)?)/i', $messageLower, $matches)) {
+            $amount = $this->extractAmount($matches[2]);
+            return FinancialCommandDTO::fromAIResponse([
+                'action' => 'update_budget',
+                'data' => ['category' => trim($matches[1]), 'amount' => $amount],
+                'confidence' => 0.85,
+            ], $message);
+        }
+
+        // Correction: amount change
+        if (preg_match('/(?:yang|transaksi)\s+(.+?)\s+(?:tadi\s+)?(?:harusnya|salah.*jadi|seharusnya|ganti\s+jadi)\s+(\d[\d.,]*\s*(?:ribu|rb|juta|jt|k)?)/i', $messageLower, $matches)) {
+            $amount = $this->extractAmount($matches[2]);
+            return FinancialCommandDTO::fromAIResponse([
+                'action' => 'update_transaction',
+                'target' => ['description' => trim($matches[1])],
+                'changes' => ['amount' => $amount],
+                'confidence' => 0.8,
+            ], $message);
+        }
+
+        // Correction: category change
+        if (preg_match('/(?:yang|transaksi)\s+(.+?)\s+(?:tadi\s+)?(?:harusnya|pindah(?:kan)?)\s+(?:kategori\s+)?(.+)/i', $messageLower, $matches)) {
+            return FinancialCommandDTO::fromAIResponse([
+                'action' => 'update_transaction',
+                'target' => ['description' => trim($matches[1])],
+                'changes' => ['category' => trim($matches[2])],
+                'confidence' => 0.75,
+            ], $message);
+        }
+
+        // Correction: wallet change
+        if (preg_match('/(?:yang|transaksi)\s+(.+?)\s+(?:tadi\s+)?(?:bukan|dari)\s+\w+\s*,?\s*(?:tapi|pakai|pake)\s+(.+)/i', $messageLower, $matches)) {
+            return FinancialCommandDTO::fromAIResponse([
+                'action' => 'update_transaction',
+                'target' => ['description' => trim($matches[1])],
+                'changes' => ['wallet' => trim($matches[2])],
+                'confidence' => 0.8,
+            ], $message);
+        }
+
+        // Generic fallback
+        return FinancialCommandDTO::fromAIResponse([
+            'action' => 'unknown',
+            'confidence' => 0.3,
+        ], $message);
     }
 
     public function formatResponse(string $type, array $data, array $context = []): string

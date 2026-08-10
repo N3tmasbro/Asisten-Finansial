@@ -3,84 +3,80 @@
 namespace App\Services\Chat;
 
 use App\Contracts\AIProviderInterface;
+use App\DTOs\FinancialCommandDTO;
+use App\Models\Category;
 use App\Models\ChatMessage;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Transaction\CategoryMatcherService;
 use App\Services\Transaction\TransactionService;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Handles transaction correction requests via WhatsApp.
+ *
+ * Flow:
+ * 1. AI parses correction intent → FinancialCommandDTO
+ * 2. TransactionCandidateResolver finds matching transaction(s)
+ * 3. 0 matches → "not found", 1 match → apply correction, N matches → ask user
+ * 4. Uses existing TransactionService::update() for wallet balance handling
+ */
 class CorrectionHandlerService
 {
     public function __construct(
         private AIProviderInterface $aiProvider,
         private TransactionService $transactionService,
+        private TransactionCandidateResolver $candidateResolver,
+        private CategoryMatcherService $categoryMatcher,
     ) {}
 
     /**
      * Handle a correction request from the user.
-     * Tries to identify which transaction(s) to correct based on context.
      */
-    public function handle(User $user, string $message, ChatMessage $chatMessage): string
+    public function handle(User $user, string $message, ChatMessage $chatMessage): string|array
     {
-        // Find the most recent transaction(s) by this user
-        $recentTransactions = Transaction::where('user_id', $user->id)
-            ->orderByDesc('created_at')
-            ->limit(5)
-            ->with(['category', 'wallet'])
-            ->get();
-
-        if ($recentTransactions->isEmpty()) {
-            return "Hmm, aku belum menemukan transaksi yang bisa dikoreksi 🤔";
-        }
-
-        // Try to parse what the user wants to correct
-        $correctionData = $this->parseCorrectionIntent($message, $recentTransactions);
-
-        if (!$correctionData) {
-            // Show recent transactions and ask which one to correct
-            $lines = ["Transaksi terbaru kamu:\n"];
-            foreach ($recentTransactions->take(3) as $i => $tx) {
-                $amount = number_format($tx->amount, 0, ',', '.');
-                $lines[] = ($i + 1) . ". {$tx->description} — Rp{$amount} [{$tx->category->name}]";
-            }
-            $lines[] = "\nMau koreksi yang mana? Kirim misalnya: \"yang nomor 1 harusnya 50rb\"";
-
-            return implode("\n", $lines);
-        }
-
-        // Apply correction
         try {
-            $transaction = $recentTransactions->find($correctionData['transaction_id'])
-                ?? $recentTransactions->first();
+            // Build context for AI
+            $context = $this->buildContext($user);
 
-            $updateData = [];
+            // Parse correction command via AI
+            $command = $this->aiProvider->parseFinancialCommand($message, $context);
 
-            if (isset($correctionData['amount'])) {
-                $updateData['amount'] = $correctionData['amount'];
-            }
-            if (isset($correctionData['category_id'])) {
-                $updateData['category_id'] = $correctionData['category_id'];
-            }
-            if (isset($correctionData['description'])) {
-                $updateData['description'] = $correctionData['description'];
+            if ($command->action !== 'update_transaction') {
+                return "Aku kurang paham koreksinya 🤔 Coba kasih detail, misalnya: \"yang tadi harusnya 50rb\" atau \"yang bensin salah kategori, harusnya transport\"";
             }
 
-            if (!empty($updateData)) {
-                $this->transactionService->update($transaction, $updateData);
+            // Resolve candidate transactions
+            $candidates = $this->candidateResolver->resolve($user, $command->target);
 
-                return $this->aiProvider->formatResponse('correction_confirmation', [
-                    'summary' => "Transaksi \"{$transaction->description}\" sudah diperbarui.",
-                    'transaction' => $transaction->fresh(['category', 'wallet'])->toArray(),
-                ]);
+            if ($candidates->isEmpty()) {
+                return "Hmm, aku nggak menemukan transaksi yang cocok 🤔 Coba jelaskan lebih detail ya.";
             }
 
-            return "Aku kurang paham koreksinya 🤔 Coba kasih detail, misalnya: \"yang tadi harusnya 50rb\" atau \"yang bensin salah kategori, harusnya transport\"";
+            if ($candidates->count() === 1) {
+                return $this->applyCorrection($candidates->first(), $command, $user);
+            }
+
+            // Multiple candidates — ask user to choose
+            $formatted = $this->candidateResolver->formatCandidateList($candidates, 'koreksi');
+
+            // Return array with pending selection metadata
+            return [
+                'text' => $formatted['text'],
+                'pending_selection' => [
+                    'action' => 'correction',
+                    'candidates' => $formatted['candidates'],
+                    'original_changes' => $command->changes,
+                    'expires_minutes' => 10,
+                ],
+            ];
 
         } catch (\Exception $e) {
-            Log::error('Correction error', [
+            Log::error('Correction handler error', [
                 'user_id' => $user->id,
                 'message' => $message,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return "Maaf, gagal mengoreksi 😓 Coba lagi atau edit langsung di dashboard ya!";
@@ -88,87 +84,140 @@ class CorrectionHandlerService
     }
 
     /**
-     * Try to parse what the user wants to correct from their message.
+     * Apply a correction to a specific transaction (called when 1 candidate or after user selection).
      */
-    private function parseCorrectionIntent(string $message, $recentTransactions): ?array
+    public function applyCorrection(Transaction $transaction, FinancialCommandDTO $command, User $user): string
     {
-        $message = mb_strtolower($message);
+        // Verify ownership
+        if ($transaction->user_id !== $user->id) {
+            return "Transaksi ini bukan milikmu 🚫";
+        }
 
-        // Check for "nomor X" or "yang ke-X" pattern
-        if (preg_match('/(nomor|no|ke[- ]?)(\d+)/i', $message, $matches)) {
-            $index = (int) $matches[2] - 1;
-            $transaction = $recentTransactions->values()->get($index);
+        $updateData = [];
+        $changeSummary = [];
 
-            if ($transaction) {
-                $data = ['transaction_id' => $transaction->id];
+        // Amount change
+        if ($command->change('amount') !== null) {
+            $oldAmount = $transaction->amount;
+            $newAmount = (int) $command->change('amount');
+            if ($newAmount > 0) {
+                $updateData['amount'] = $newAmount;
+                $changeSummary[] = "nominal dari Rp" . number_format($oldAmount, 0, ',', '.') . " → Rp" . number_format($newAmount, 0, ',', '.');
+            }
+        }
 
-                // Check for amount correction
-                $amount = $this->extractAmount($message);
-                if ($amount > 0) {
-                    $data['amount'] = $amount;
+        // Category change
+        if ($command->change('category') !== null) {
+            $newCategory = $this->categoryMatcher->match(
+                $command->change('category'),
+                $user->id,
+                $transaction->type->value
+            );
+            $oldCategoryName = $transaction->category->name ?? 'Unknown';
+            $updateData['category_id'] = $newCategory->id;
+            $changeSummary[] = "kategori dari {$oldCategoryName} → {$newCategory->name}";
+        }
+
+        // Wallet change
+        if ($command->change('wallet') !== null) {
+            $newWallet = $user->wallets()
+                ->where('name', 'LIKE', '%' . $command->change('wallet') . '%')
+                ->first();
+
+            if ($newWallet) {
+                $oldWalletName = $transaction->wallet->name ?? 'Unknown';
+                $updateData['wallet_id'] = $newWallet->id;
+                $changeSummary[] = "wallet dari {$oldWalletName} → {$newWallet->name}";
+            } else {
+                return "Wallet \"{$command->change('wallet')}\" tidak ditemukan 🤔 Cek nama wallet kamu.";
+            }
+        }
+
+        // Description change
+        if ($command->change('description') !== null) {
+            $updateData['description'] = $command->change('description');
+            $changeSummary[] = "deskripsi → \"{$command->change('description')}\"";
+        }
+
+        // Date change
+        if ($command->change('date') !== null) {
+            try {
+                $updateData['transaction_date'] = $command->change('date');
+                $changeSummary[] = "tanggal → {$command->change('date')}";
+            } catch (\Exception $e) {
+                // Invalid date, skip
+            }
+        }
+
+        // Type change (financially significant!)
+        if ($command->change('type') !== null) {
+            $newType = $command->change('type');
+            if (in_array($newType, ['income', 'expense'])) {
+                $oldType = $transaction->type->value;
+                if ($oldType !== $newType) {
+                    $updateData['type'] = $newType;
+                    $typeLabel = $newType === 'income' ? 'pemasukan' : 'pengeluaran';
+                    $changeSummary[] = "tipe → {$typeLabel}";
                 }
-
-                return $data;
             }
         }
 
-        // Check for "yang tadi" (most recent)
-        if (preg_match('/(yang tadi|yang barusan|yang terakhir)/i', $message)) {
-            $transaction = $recentTransactions->first();
-            $data = ['transaction_id' => $transaction->id];
-
-            $amount = $this->extractAmount($message);
-            if ($amount > 0) {
-                $data['amount'] = $amount;
-            }
-
-            return $data;
+        if (empty($updateData)) {
+            return "Aku kurang paham apa yang mau dikoreksi 🤔 Coba jelaskan lebih spesifik ya.";
         }
 
-        // Try to match by description keyword
-        foreach ($recentTransactions as $tx) {
-            $desc = mb_strtolower($tx->description);
-            if (str_contains($message, $desc) || str_contains($desc, $this->extractKeyword($message))) {
-                $data = ['transaction_id' => $tx->id];
+        // Apply correction via TransactionService (handles wallet balance reversal/reapplication)
+        $this->transactionService->update($transaction, $updateData);
 
-                $amount = $this->extractAmount($message);
-                if ($amount > 0) {
-                    $data['amount'] = $amount;
-                }
-
-                return $data;
-            }
-        }
-
-        return null;
+        $summary = implode(', ', $changeSummary);
+        return "Siap! ✏️ Transaksi \"{$transaction->description}\" sudah diubah: {$summary}.";
     }
 
-    private function extractAmount(string $text): int
+    /**
+     * Apply a correction by transaction ID (used after candidate selection).
+     */
+    public function applyCorrectionById(User $user, int $transactionId, ?array $changes): string
     {
-        if (preg_match('/(\d+[\.,]?\d*)\s*(juta|jt)/i', $text, $matches)) {
-            $num = str_replace(',', '.', $matches[1]);
-            return (int) ((float) $num * 1000000);
+        $transaction = Transaction::where('user_id', $user->id)->find($transactionId);
+
+        if (!$transaction) {
+            return "Transaksi tidak ditemukan 🤔";
         }
 
-        if (preg_match('/(\d+[\.,]?\d*)\s*(ribu|rb|k)\b/i', $text, $matches)) {
-            $num = str_replace(',', '.', $matches[1]);
-            return (int) ((float) $num * 1000);
+        if (!$changes || empty(array_filter($changes, fn($v) => $v !== null))) {
+            return "Tidak ada perubahan yang diterapkan.";
         }
 
-        if (preg_match('/(\d{1,3}(?:\.\d{3})+)/', $text, $matches)) {
-            return (int) str_replace('.', '', $matches[1]);
-        }
+        $command = FinancialCommandDTO::fromAIResponse([
+            'action' => 'update_transaction',
+            'changes' => $changes,
+        ]);
 
-        return 0;
+        return $this->applyCorrection($transaction, $command, $user);
     }
 
-    private function extractKeyword(string $text): string
+    /**
+     * Build context data for AI parsing.
+     */
+    private function buildContext(User $user): array
     {
-        // Remove correction-related words to get the transaction keyword
-        $cleaned = preg_replace('/(salah|koreksi|ubah|ganti|bukan|ralat|harusnya|seharusnya|yang|tadi|barusan)/i', '', $text);
-        $cleaned = preg_replace('/\d+[\.,]?\d*\s*(ribu|rb|juta|jt|k)\b/i', '', $cleaned);
-        $cleaned = preg_replace('/\s+/', ' ', $cleaned);
+        $recentTx = Transaction::where('user_id', $user->id)
+            ->with(['category:id,name', 'wallet:id,name'])
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
 
-        return trim($cleaned);
+        return [
+            'recent_transactions' => $recentTx->map(fn($tx) => [
+                'description' => $tx->description,
+                'amount' => $tx->amount,
+                'category' => $tx->category->name ?? 'Unknown',
+                'wallet' => $tx->wallet->name ?? 'Unknown',
+                'date' => $tx->transaction_date->format('Y-m-d'),
+            ])->toArray(),
+            'wallets' => $user->wallets()->pluck('name')->toArray(),
+            'categories_expense' => $this->categoryMatcher->getCategoryNamesForUser($user->id, 'expense'),
+            'categories_income' => $this->categoryMatcher->getCategoryNamesForUser($user->id, 'income'),
+        ];
     }
 }

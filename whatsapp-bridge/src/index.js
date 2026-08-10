@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+const fs = require('fs');
+const path = require('path');
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const { Boom } = require('@hapi/boom');
@@ -7,10 +9,48 @@ const qrcode = require('qrcode-terminal');
 const { forwardToLaravel } = require('./webhook');
 const { createSenderApp } = require('./sender');
 
+// ─── File Logger Setup ────────────────────────────────────────────────────────
+const logsDir = path.join(__dirname, '..', 'logs');
+if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+
+function getLogFile() {
+    const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    return path.join(logsDir, `bridge-${date}.log`);
+}
+
+function writeLog(level, ...args) {
+    const timestamp = new Date().toISOString();
+    const line = `[${timestamp}] [${level}] ${args.join(' ')}`;
+    // Write to log file
+    fs.appendFileSync(getLogFile(), line + '\n', 'utf8');
+    return line;
+}
+
+// Override console methods to tee output to file AND terminal
+const _log   = console.log.bind(console);
+const _error = console.error.bind(console);
+const _warn  = console.warn.bind(console);
+
+console.log = (...args) => {
+    _log(...args);
+    writeLog('INFO', ...args.map(String));
+};
+console.error = (...args) => {
+    _error(...args);
+    writeLog('ERROR', ...args.map(String));
+};
+console.warn = (...args) => {
+    _warn(...args);
+    writeLog('WARN', ...args.map(String));
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 const logger = pino({ level: 'info' });
 const PORT = process.env.PORT || 3001;
 
 let sock = null;
+
 
 async function connectToWhatsApp() {
     const { state, saveCreds } = await useMultiFileAuthState('./auth_state');

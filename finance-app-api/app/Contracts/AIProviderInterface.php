@@ -2,6 +2,7 @@
 
 namespace App\Contracts;
 
+use App\DTOs\FinancialCommandDTO;
 use App\DTOs\IntentClassificationDTO;
 use App\DTOs\ParsedTransactionDTO;
 use App\DTOs\QueryParametersDTO;
@@ -39,6 +40,17 @@ interface AIProviderInterface
     public function parseQuery(string $message, array $context = []): QueryParametersDTO;
 
     /**
+     * Stage 2C: Parse a financial command (correction, deletion, management).
+     * Returns a structured command that the backend validates and executes.
+     * AI must NOT invent database IDs, balances, or transaction history.
+     *
+     * @param string $message The raw user message
+     * @param array $context Recent transactions, wallet names, category names for resolution
+     * @return FinancialCommandDTO
+     */
+    public function parseFinancialCommand(string $message, array $context = []): FinancialCommandDTO;
+
+    /**
      * Stage 3: Format raw data into a natural Bahasa Indonesia response.
      * AI must NOT alter/invent any numbers — only format what's given.
      *
@@ -49,3 +61,4 @@ interface AIProviderInterface
      */
     public function formatResponse(string $type, array $data, array $context = []): string;
 }
+
