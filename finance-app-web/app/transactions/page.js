@@ -10,6 +10,10 @@ export default function TransactionsPage() {
   const [wallets, setWallets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [walletFilter, setWalletFilter] = useState('');
+  const [sortKey, setSortKey] = useState('date');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [searchQuery, setSearchQuery] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -101,6 +105,15 @@ export default function TransactionsPage() {
     }
   }
 
+  function handleSort(key) {
+    if (sortKey === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortOrder('desc');
+    }
+  }
+
   function showMessage(msg) {
     setSuccess(msg);
     setTimeout(() => setSuccess(''), 3000);
@@ -108,12 +121,48 @@ export default function TransactionsPage() {
 
   const filteredCategories = categories.filter(c => c.type === form.type);
 
+  // Apply filters
   const filtered = transactions.filter((tx) => {
     if (filter === 'expense' && tx.type !== 'expense') return false;
     if (filter === 'income' && tx.type !== 'income') return false;
     if (filter === 'review' && tx.is_reviewed) return false;
-    if (searchQuery && !tx.description.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (categoryFilter && Number(tx.category_id) !== Number(categoryFilter)) return false;
+    if (walletFilter && Number(tx.wallet_id) !== Number(walletFilter)) return false;
+    if (searchQuery && !tx.description.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !(tx.raw_input && tx.raw_input.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
     return true;
+  });
+
+  // Apply sorting
+  const sorted = [...filtered].sort((a, b) => {
+    let aVal, bVal;
+    switch (sortKey) {
+      case 'description':
+        aVal = (a.description || '').toLowerCase();
+        bVal = (b.description || '').toLowerCase();
+        break;
+      case 'category':
+        aVal = (a.category?.name || '').toLowerCase();
+        bVal = (b.category?.name || '').toLowerCase();
+        break;
+      case 'wallet':
+        aVal = (a.wallet?.name || '').toLowerCase();
+        bVal = (b.wallet?.name || '').toLowerCase();
+        break;
+      case 'date':
+        aVal = new Date(a.transaction_date).getTime();
+        bVal = new Date(b.transaction_date).getTime();
+        break;
+      case 'amount':
+        aVal = a.type === 'income' ? a.amount : -a.amount;
+        bVal = b.type === 'income' ? b.amount : -b.amount;
+        break;
+      default:
+        return 0;
+    }
+    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
   });
 
   if (loading) {
@@ -234,6 +283,31 @@ export default function TransactionsPage() {
             </button>
           ))}
         </div>
+
+        {/* Category Filter */}
+        <select
+          className="input-field max-w-xs text-sm py-2"
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+        >
+          <option value="">Semua Kategori</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+          ))}
+        </select>
+
+        {/* Wallet Filter */}
+        <select
+          className="input-field max-w-xs text-sm py-2"
+          value={walletFilter}
+          onChange={(e) => setWalletFilter(e.target.value)}
+        >
+          <option value="">Semua Dompet</option>
+          {wallets.map((w) => (
+            <option key={w.id} value={w.id}>{w.name}</option>
+          ))}
+        </select>
+
         <input
           type="text"
           placeholder="🔍 Cari transaksi..."
@@ -248,17 +322,34 @@ export default function TransactionsPage() {
         <table className="w-full">
           <thead>
             <tr style={{ background: 'var(--color-surface-1)' }}>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Transaksi</th>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Kategori</th>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Dompet</th>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Tanggal</th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Jumlah</th>
-              <th className="px-5 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-white transition-colors"
+                onClick={() => handleSort('description')}>
+                Transaksi {sortKey === 'description' && (sortOrder === 'asc' ? '▲' : '▼')}
+              </th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-white transition-colors"
+                onClick={() => handleSort('category')}>
+                Kategori {sortKey === 'category' && (sortOrder === 'asc' ? '▲' : '▼')}
+              </th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-white transition-colors"
+                onClick={() => handleSort('wallet')}>
+                Dompet {sortKey === 'wallet' && (sortOrder === 'asc' ? '▲' : '▼')}
+              </th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-white transition-colors"
+                onClick={() => handleSort('date')}>
+                Tanggal {sortKey === 'date' && (sortOrder === 'asc' ? '▲' : '▼')}
+              </th>
+              <th className="px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-white transition-colors"
+                onClick={() => handleSort('amount')}>
+                Jumlah {sortKey === 'amount' && (sortOrder === 'asc' ? '▲' : '▼')}
+              </th>
+              <th className="px-5 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider select-none">
+                Status
+              </th>
               <th className="px-5 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider w-16"></th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((tx) => (
+            {sorted.map((tx) => (
               <tr key={tx.id} className="border-t border-white/[0.04] hover:bg-white/[0.02] transition-all duration-150">
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
@@ -312,7 +403,7 @@ export default function TransactionsPage() {
           </tbody>
         </table>
 
-        {filtered.length === 0 && (
+        {sorted.length === 0 && (
           <div className="py-12 text-center">
             <p className="text-gray-400">{transactions.length === 0 ? 'Belum ada transaksi. Kirim pesan ke WhatsApp untuk mulai!' : 'Tidak ada transaksi ditemukan.'}</p>
           </div>
