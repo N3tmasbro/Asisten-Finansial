@@ -1,39 +1,38 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import api from '../../lib/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function SettingsPage() {
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { user, isLoading: authLoading, logout } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [bridgeStatus, setBridgeStatus] = useState(null);
+  const [bridgeLoading, setBridgeLoading] = useState(true);
 
   useEffect(() => {
-    fetchProfile();
+    fetchBridgeStatus();
   }, []);
 
-  async function fetchProfile() {
+  async function fetchBridgeStatus() {
+    setBridgeLoading(true);
     try {
-      const data = await api.getProfile();
-      setProfile(data.user || data);
+      const res = await fetch('/api/bridge-status');
+      const data = await res.json();
+      setBridgeStatus(data);
     } catch (err) {
-      console.error('Failed to fetch profile:', err);
+      setBridgeStatus({ status: 'disconnected', user: null, error: 'Tidak bisa terhubung' });
     } finally {
-      setLoading(false);
+      setBridgeLoading(false);
     }
   }
 
   async function handleLogout() {
     setLoggingOut(true);
-    try {
-      await api.logout();
-    } catch (err) {
-      // Ignore errors, clear token anyway
-    } finally {
-      api.clearToken();
-      window.location.href = '/login';
-    }
+    await logout();
   }
+
+  const loading = authLoading;
+  const profile = user;
 
   if (loading) {
     return (
@@ -47,12 +46,14 @@ export default function SettingsPage() {
   }
 
   const phoneVerified = profile?.phone_verified || profile?.is_phone_verified || false;
+  const isConnected = bridgeStatus?.status === 'connected';
+  const botName = bridgeStatus?.user?.name || null;
 
   return (
     <div className="animate-fade-in max-w-3xl">
       <div className="mb-8">
         <h1 className="text-2xl font-extrabold tracking-tight">Pengaturan</h1>
-        <p className="text-gray-400 text-sm mt-1">Kelola profil, koneksi WhatsApp, dan langganan</p>
+        <p className="text-gray-400 text-sm mt-1">Kelola profil dan koneksi WhatsApp</p>
       </div>
 
       {/* Profile Section */}
@@ -86,59 +87,56 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* WhatsApp Connection */}
+      {/* WhatsApp Connection — Dynamic */}
       <div className="glass-card mb-6">
-        <h2 className="text-lg font-bold mb-4">📱 Koneksi WhatsApp</h2>
-        <div className="flex items-center gap-4 p-4 rounded-xl"
-          style={{ background: 'rgba(16,185,129,0.05)' }}>
-          <div className="w-3 h-3 rounded-full bg-emerald-400"
-            style={{ boxShadow: '0 0 8px rgba(16,185,129,0.5)' }} />
-          <div>
-            <p className="text-sm font-semibold text-white">Terhubung</p>
-            <p className="text-xs text-gray-400">
-              WhatsApp bridge aktif. Kirim pesan ke bot untuk mencatat transaksi.
-            </p>
-          </div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold">📱 Koneksi WhatsApp</h2>
+          <button
+            onClick={fetchBridgeStatus}
+            className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+          >
+            🔄 Refresh
+          </button>
         </div>
+        {bridgeLoading ? (
+          <div className="flex items-center gap-3 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)' }}>
+            <div className="w-3 h-3 rounded-full bg-gray-500 animate-pulse" />
+            <p className="text-sm text-gray-400">Mengecek status bridge...</p>
+          </div>
+        ) : isConnected ? (
+          <div className="flex items-center gap-4 p-4 rounded-xl"
+            style={{ background: 'rgba(16,185,129,0.05)' }}>
+            <div className="w-3 h-3 rounded-full bg-emerald-400"
+              style={{ boxShadow: '0 0 8px rgba(16,185,129,0.5)' }} />
+            <div>
+              <p className="text-sm font-semibold text-white">Terhubung ✅</p>
+              <p className="text-xs text-gray-400">
+                {botName ? `Bot: ${botName}` : 'WhatsApp bridge aktif.'} Kirim pesan ke bot untuk mencatat transaksi.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-4 p-4 rounded-xl"
+            style={{ background: 'rgba(244,63,94,0.05)' }}>
+            <div className="w-3 h-3 rounded-full bg-rose-400"
+              style={{ boxShadow: '0 0 8px rgba(244,63,94,0.5)' }} />
+            <div>
+              <p className="text-sm font-semibold text-white">Tidak Terhubung ❌</p>
+              <p className="text-xs text-gray-400">
+                {bridgeStatus?.error || 'WhatsApp bridge tidak aktif. Jalankan `npm start` di folder whatsapp-bridge.'}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Subscription */}
+      {/* Subscription section hidden for demo */}
+      {/* TODO: Restore when payment gateway is integrated
       <div className="glass-card mb-6">
         <h2 className="text-lg font-bold mb-4">⭐ Langganan</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[
-            { tier: 'free', label: 'Free', price: 'Gratis', features: ['Input unlimited via WA', 'Q&A dasar', 'Dashboard sederhana'], active: (profile?.subscription_tier || 'free') === 'free' },
-            { tier: 'starter', label: 'Starter', price: 'Rp49.000/bln', features: ['Semua fitur Free', 'Trend analysis', 'Prediksi saldo', 'Export CSV'], active: false },
-          ].map((plan) => (
-            <div key={plan.tier}
-              className={`p-5 rounded-xl border transition-all duration-150 ${
-                plan.active
-                  ? 'border-indigo-500/30 bg-indigo-500/5'
-                  : 'border-white/[0.06] hover:border-white/[0.12]'
-              }`}>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-bold">{plan.label}</h3>
-                {plan.active && (
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-indigo-400 bg-indigo-400/10">
-                    Aktif
-                  </span>
-                )}
-              </div>
-              <p className="text-2xl font-extrabold tracking-tight mb-3">{plan.price}</p>
-              <ul className="space-y-2">
-                {plan.features.map((f, i) => (
-                  <li key={i} className="text-sm text-gray-400 flex items-center gap-2">
-                    <span className="text-emerald-400">✓</span> {f}
-                  </li>
-                ))}
-              </ul>
-              {!plan.active && (
-                <button className="btn-primary text-sm w-full mt-4">Upgrade</button>
-              )}
-            </div>
-          ))}
-        </div>
+        ...
       </div>
+      */}
 
       {/* Danger Zone */}
       <div className="glass-card border-rose-500/20">
@@ -160,3 +158,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+

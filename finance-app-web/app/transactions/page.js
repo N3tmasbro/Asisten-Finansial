@@ -6,26 +6,107 @@ import api from '../../lib/api';
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [wallets, setWallets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [form, setForm] = useState({
+    description: '',
+    amount: '',
+    type: 'expense',
+    category_id: '',
+    wallet_id: '',
+    transaction_date: new Date().toISOString().split('T')[0],
+  });
 
   useEffect(() => {
-    fetchTransactions();
+    fetchAll();
   }, []);
 
-  async function fetchTransactions() {
+  async function fetchAll() {
     setLoading(true);
     try {
-      const res = await api.getTransactions({ limit: 50, sort: 'latest' });
-      const txData = Array.isArray(res) ? res : (res.data || []);
-      setTransactions(txData);
+      const [txRes, catRes, walletRes] = await Promise.allSettled([
+        api.getTransactions({ limit: 50, sort: 'latest' }),
+        api.getCategories(),
+        api.getWallets(),
+      ]);
+      if (txRes.status === 'fulfilled') {
+        const txData = txRes.value;
+        setTransactions(Array.isArray(txData) ? txData : (txData.data || []));
+      }
+      if (catRes.status === 'fulfilled') {
+        const cats = catRes.value;
+        setCategories(cats.categories || cats || []);
+      }
+      if (walletRes.status === 'fulfilled') {
+        const wals = walletRes.value;
+        setWallets(wals.wallets || wals || []);
+      }
     } catch (err) {
-      console.error('Failed to fetch transactions:', err);
+      console.error('Failed to fetch:', err);
     } finally {
       setLoading(false);
     }
   }
+
+  async function handleCreate(e) {
+    e.preventDefault();
+    setError('');
+    setSaving(true);
+    try {
+      await api.createTransaction({
+        description: form.description,
+        amount: Number(form.amount),
+        type: form.type,
+        category_id: form.category_id ? Number(form.category_id) : undefined,
+        wallet_id: form.wallet_id ? Number(form.wallet_id) : undefined,
+        transaction_date: form.transaction_date,
+      });
+      showMessage('Transaksi berhasil ditambahkan!');
+      setForm({
+        description: '',
+        amount: '',
+        type: 'expense',
+        category_id: '',
+        wallet_id: '',
+        transaction_date: new Date().toISOString().split('T')[0],
+      });
+      setShowForm(false);
+      fetchAll();
+    } catch (err) {
+      setError(err.message || 'Gagal menambah transaksi.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!confirm('Yakin ingin menghapus transaksi ini?')) return;
+    setDeleting(id);
+    try {
+      await api.deleteTransaction(id);
+      showMessage('Transaksi berhasil dihapus.');
+      fetchAll();
+    } catch (err) {
+      setError(err.message || 'Gagal menghapus transaksi.');
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  function showMessage(msg) {
+    setSuccess(msg);
+    setTimeout(() => setSuccess(''), 3000);
+  }
+
+  const filteredCategories = categories.filter(c => c.type === form.type);
 
   const filtered = transactions.filter((tx) => {
     if (filter === 'expense' && tx.type !== 'expense') return false;
@@ -53,8 +134,82 @@ export default function TransactionsPage() {
           <h1 className="text-2xl font-extrabold tracking-tight">Transaksi</h1>
           <p className="text-gray-400 text-sm mt-1">Riwayat lengkap semua transaksi kamu</p>
         </div>
-        <button className="btn-primary" onClick={fetchTransactions}>🔄 Refresh</button>
+        <div className="flex gap-2">
+          <button className="btn-secondary" onClick={fetchAll}>🔄 Refresh</button>
+          <button className="btn-primary" onClick={() => { setShowForm(!showForm); setError(''); }}>
+            + Tambah Manual
+          </button>
+        </div>
       </div>
+
+      {success && (
+        <div className="p-3 rounded-lg text-sm text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 mb-4 animate-slide-up">
+          {success}
+        </div>
+      )}
+
+      {/* Add Transaction Form */}
+      {showForm && (
+        <div className="glass-card mb-6 animate-slide-up">
+          <h3 className="text-lg font-bold mb-4">Tambah Transaksi Manual</h3>
+          <form onSubmit={handleCreate}>
+            {error && (
+              <div className="p-3 rounded-lg text-sm text-rose-400 bg-rose-400/10 border border-rose-400/20 mb-4">{error}</div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Deskripsi</label>
+                <input type="text" className="input-field" placeholder="Makan siang, bensin, dll."
+                  value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} required />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Jumlah (Rp)</label>
+                <input type="number" className="input-field" placeholder="50000"
+                  value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} min="1" required />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Tipe</label>
+                <select className="input-field" value={form.type}
+                  onChange={e => setForm({ ...form, type: e.target.value, category_id: '' })}>
+                  <option value="expense">Pengeluaran</option>
+                  <option value="income">Pemasukan</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Kategori</label>
+                <select className="input-field" value={form.category_id}
+                  onChange={e => setForm({ ...form, category_id: e.target.value })}>
+                  <option value="">Pilih kategori...</option>
+                  {filteredCategories.map(c => (
+                    <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Dompet</label>
+                <select className="input-field" value={form.wallet_id}
+                  onChange={e => setForm({ ...form, wallet_id: e.target.value })}>
+                  <option value="">Pilih dompet...</option>
+                  {wallets.map(w => (
+                    <option key={w.id} value={w.id}>{w.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Tanggal</label>
+                <input type="date" className="input-field"
+                  value={form.transaction_date} onChange={e => setForm({ ...form, transaction_date: e.target.value })} />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button type="submit" disabled={saving} className="btn-primary text-sm">
+                {saving ? 'Menyimpan...' : 'Simpan Transaksi'}
+              </button>
+              <button type="button" className="btn-secondary text-sm" onClick={() => setShowForm(false)}>Batal</button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -99,11 +254,12 @@ export default function TransactionsPage() {
               <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Tanggal</th>
               <th className="px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Jumlah</th>
               <th className="px-5 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+              <th className="px-5 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider w-16"></th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((tx) => (
-              <tr key={tx.id} className="border-t border-white/[0.04] hover:bg-white/[0.02] transition-all duration-150 cursor-pointer">
+              <tr key={tx.id} className="border-t border-white/[0.04] hover:bg-white/[0.02] transition-all duration-150">
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg flex items-center justify-center text-base"
@@ -140,6 +296,16 @@ export default function TransactionsPage() {
                       {tx.ai_confidence ? `${Math.round(tx.ai_confidence * 100)}%` : '✓'}
                     </span>
                   )}
+                </td>
+                <td className="px-5 py-4 text-center">
+                  <button
+                    onClick={() => handleDelete(tx.id)}
+                    disabled={deleting === tx.id}
+                    className="text-xs text-rose-400/50 hover:text-rose-400 transition-colors"
+                    title="Hapus transaksi"
+                  >
+                    {deleting === tx.id ? '...' : '🗑️'}
+                  </button>
                 </td>
               </tr>
             ))}

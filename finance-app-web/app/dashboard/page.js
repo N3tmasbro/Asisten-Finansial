@@ -97,6 +97,36 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Onboarding Card — shown when no data yet */}
+      {!loading && wallets.length === 0 && transactions.length === 0 && (
+        <div className="mb-8 p-6 rounded-2xl border border-indigo-500/20 animate-slide-up"
+          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.05), rgba(139,92,246,0.05))' }}>
+          <div className="flex items-start gap-4">
+            <div className="text-4xl">🚀</div>
+            <div>
+              <h3 className="text-lg font-bold text-white mb-2">Selamat datang di Asisten Finansial!</h3>
+              <p className="text-sm text-gray-400 mb-4 leading-relaxed">
+                Belum ada data keuangan. Mulai dengan langkah-langkah berikut:
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold">1</span>
+                  <span className="text-gray-300">Buat dompet pertamamu di halaman <a href="/wallets" className="text-indigo-400 hover:text-indigo-300 font-medium">Dompet</a></span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold">2</span>
+                  <span className="text-gray-300">Kirim pesan ke WhatsApp Bot, contoh: <span className="text-white font-medium">"Beli kopi 15rb"</span></span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold">3</span>
+                  <span className="text-gray-300">Atau <a href="/transactions" className="text-indigo-400 hover:text-indigo-300 font-medium">tambah transaksi manual</a> dari web</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         <div className="stat-card accent">

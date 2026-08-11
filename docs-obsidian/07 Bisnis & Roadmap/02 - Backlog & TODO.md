@@ -1,0 +1,66 @@
+---
+tags: [roadmap, backlog, todo]
+---
+
+# 02 — Backlog & TODO
+
+Daftar hal yang **belum selesai** atau **perlu didiskusikan** lebih lanjut.
+
+---
+
+## 🔴 Prioritas Tinggi
+
+- [ ] **Finalisasi harga tier subscription** — perlu dihitung ulang setelah tahu estimasi biaya WhatsApp Business API per percakapan
+- [ ] **Strategi testing prompt AI** — kumpulan variasi kalimat nyata (typo, bahasa gaul, tanpa tanda baca) untuk validasi akurasi parsing sebelum launch
+
+---
+
+## 🟡 Prioritas Sedang
+
+- [ ] **Algoritma `BalancePredictionService`** — pendekatan prediksi saldo (moving average sederhana vs metode lain) belum ditentukan
+- [ ] **Struktur Next.js dashboard yang lebih detail** — state management, integrasi API, komponen chart yang dipakai (recharts/chart.js), belum dibahas mendalam
+- [ ] **Integrasi API Frontend** — menghubungkan halaman Next.js yang ada ke endpoints Laravel yang baru saja kita bangun
+
+---
+
+## 🟢 Prioritas Rendah / Nanti
+
+- [ ] **Prompt untuk fitur "Pengingat Cerdas"** — deteksi pola transaksi rutin (misal bayar listrik tiap awal bulan) belum dirancang prompt/logic-nya
+- [ ] **Prompt & logic untuk "Saran Penghematan"** — bagaimana AI menghitung dan memformat saran (`"jika mengurangi X 20%, bisa menabung Y"`)
+- [ ] **Integrasi payment gateway** — pemilihan provider (Midtrans vs lainnya) dan alur `Subscription` lifecycle (upgrade, downgrade, gagal bayar) belum dibahas teknis
+- [ ] **Kebijakan migrasi Baileys → WhatsApp Business API resmi** — trigger/threshold kapan harus migrasi (jumlah user? volume pesan?) belum ditentukan angka pastinya
+
+---
+
+## ✅ Selesai
+
+- [x] Arsitektur 3-stage / Multi-Intent AI pipeline
+- [x] Provider pattern (AI & WhatsApp)
+- [x] Database schema & migrations
+- [x] Backend API CRUD endpoints
+- [x] WhatsApp Bridge (Baileys) + Logging harian
+- [x] Auto-linking WA via LID
+- [x] Queue job untuk async processing
+- [x] Frontend halaman dasar (login, register, dashboard, transactions, settings)
+- [x] **`CorrectionHandlerService` & `DeleteHandlerService`** + algoritma pencarian `CandidateResolverService` + konfirmasi
+- [x] **Detail webhook payload contract** antara WA Bridge dan Laravel
+
+---
+
+## 📋 Urutan yang Disarankan untuk Dikerjakan Berikutnya
+
+Berdasarkan progres saat ini:
+
+```
+1. Integrasi API Frontend Next.js (Menghubungkan dashboard web ke backend)
+2. Algoritma Balance Prediction ("saldo akan habis tanggal berapa?")
+3. Fitur AI: Prompt Pengingat Cerdas (Deteksi transaksi rutin)
+4. Fitur AI: Prompt Saran Penghematan
+5. Integrasi Payment Gateway (Midtrans)
+```
+
+---
+
+## 🔗 Lihat Juga
+- [[01 - Model Monetisasi]]
+- [[../06 AI & Integrasi/02 - Prompt & Pipeline Detail]]

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '../contexts/AuthContext';
 
 const navItems = [
   { href: '/dashboard', icon: '📊', label: 'Dashboard' },
@@ -15,6 +16,12 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { user } = useAuth();
+
+  const userName = user?.name || 'User';
+  const userInitial = userName.charAt(0).toUpperCase();
+  const userTier = user?.subscription_tier || 'free';
+  const tierLabel = userTier === 'free' ? 'Free Plan' : userTier.charAt(0).toUpperCase() + userTier.slice(1);
 
   return (
     <aside className="fixed top-0 left-0 w-64 h-screen border-r border-white/[0.06] flex flex-col z-50"
@@ -66,14 +73,15 @@ export default function Sidebar() {
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold"
             style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-            U
+            {userInitial}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">User</p>
-            <p className="text-xs text-gray-500">Free Plan</p>
+            <p className="text-sm font-medium text-white truncate">{userName}</p>
+            <p className="text-xs text-gray-500">{tierLabel}</p>
           </div>
         </div>
       </div>
     </aside>
   );
 }
+

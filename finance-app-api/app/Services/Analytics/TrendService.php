@@ -64,13 +64,21 @@ class TrendService
 
         while ($current->lte($end)) {
             $dateStr = $current->toDateString();
-            $dayData = $dailyData->where('transaction_date', $dateStr);
+            
+            // Safe filter because transaction_date might be casted to Carbon instance
+            $dayData = $dailyData->filter(function ($item) use ($dateStr) {
+                $itemDate = $item->transaction_date;
+                $itemDateStr = $itemDate instanceof \Carbon\Carbon 
+                    ? $itemDate->toDateString() 
+                    : (string) $itemDate;
+                return substr($itemDateStr, 0, 10) === $dateStr;
+            });
 
             $series[] = [
                 'date' => $dateStr,
                 'day_label' => $current->translatedFormat('D, d M'),
-                'expense' => (int) $dayData->where('type', 'expense')->sum('total'),
-                'income' => (int) $dayData->where('type', 'income')->sum('total'),
+                'expense' => (int) $dayData->where('type.value', 'expense')->sum('total'),
+                'income' => (int) $dayData->where('type.value', 'income')->sum('total'),
             ];
 
             $current->addDay();
