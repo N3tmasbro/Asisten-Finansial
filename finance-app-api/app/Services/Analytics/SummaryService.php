@@ -81,6 +81,7 @@ class SummaryService
             'last_week' => [$now->copy()->subWeek()->startOfWeek()->toDateString(), $now->copy()->subWeek()->endOfWeek()->toDateString()],
             'this_month' => [$now->copy()->startOfMonth()->toDateString(), $now->copy()->endOfMonth()->toDateString()],
             'last_month' => [$now->copy()->subMonth()->startOfMonth()->toDateString(), $now->copy()->subMonth()->endOfMonth()->toDateString()],
+            'this_year' => [$now->copy()->startOfYear()->toDateString(), $now->copy()->endOfYear()->toDateString()],
             default => [$now->copy()->startOfMonth()->toDateString(), $now->copy()->endOfMonth()->toDateString()],
         };
     }
@@ -93,6 +94,7 @@ class SummaryService
             'last_week' => 'minggu lalu',
             'this_month' => 'bulan ini',
             'last_month' => 'bulan lalu',
+            'this_year' => 'tahun ini',
             default => 'bulan ini',
         };
     }

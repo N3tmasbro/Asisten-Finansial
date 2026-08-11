@@ -72,7 +72,7 @@ export default function AnalyticsPage() {
 
   const pieData = breakdown.map((b, i) => ({
     name: b.category_name || b.name || b.category || 'Lainnya',
-    value: b.total || b.amount || 0,
+    value: Number(b.total || b.amount || 0),
     color: COLORS[i % COLORS.length],
   }));
 
@@ -92,14 +92,14 @@ export default function AnalyticsPage() {
           <p className="text-gray-400 text-sm mt-1">Insight mendalam tentang pola keuanganmu</p>
         </div>
         <div className="flex gap-2">
-          {['this_month', 'last_month', 'this_week'].map((p) => (
+          {['this_year', 'last_month', 'this_month', 'this_week'].map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150
                 ${period === p ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-400 hover:text-white hover:bg-white/[0.03]'}`}
             >
-              {p === 'this_month' ? 'Bulan Ini' : p === 'last_month' ? 'Bulan Lalu' : 'Minggu Ini'}
+              {p === 'this_year' ? 'Tahun Ini' : p === 'last_month' ? 'Bulan Lalu' : p === 'this_month' ? 'Bulan Ini' : 'Minggu Ini'}
             </button>
           ))}
         </div>
@@ -163,7 +163,7 @@ export default function AnalyticsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                       <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false}
-                        tickFormatter={(v) => v >= 1000000 ? `${(v/1000000).toFixed(1)}jt` : `${(v/1000).toFixed(0)}rb`} />
+                        tickFormatter={(v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}jt` : `${(v / 1000).toFixed(0)}rb`} />
                       <Tooltip content={<CustomTooltip />} />
                       <Area type="monotone" dataKey="expense" name="Pengeluaran" stroke="#f43f5e" fill="url(#colorExpense)" strokeWidth={2} />
                       <Area type="monotone" dataKey="income" name="Pemasukan" stroke="#10b981" fill="url(#colorIncome)" strokeWidth={2} />
@@ -225,7 +225,7 @@ export default function AnalyticsPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                     <XAxis dataKey="category" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false}
-                      tickFormatter={(v) => v >= 1000000 ? `${(v/1000000).toFixed(1)}jt` : `${(v/1000).toFixed(0)}rb`} />
+                      tickFormatter={(v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}jt` : `${(v / 1000).toFixed(0)}rb`} />
                     <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="bulanLalu" name="Bulan Lalu" fill="#374151" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="bulanIni" name="Bulan Ini" fill="#6366f1" radius={[4, 4, 0, 0]} />
