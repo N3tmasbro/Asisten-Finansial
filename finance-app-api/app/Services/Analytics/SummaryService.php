@@ -75,6 +75,12 @@ class SummaryService
     {
         $now = Carbon::now();
 
+        // Handle specific_month:YYYY-MM format (e.g. specific_month:2026-07)
+        if (str_starts_with($period, 'specific_month:')) {
+            $ym = Carbon::parse(substr($period, strlen('specific_month:')) . '-01');
+            return [$ym->copy()->startOfMonth()->toDateString(), $ym->copy()->endOfMonth()->toDateString()];
+        }
+
         return match ($period) {
             'today' => [$now->toDateString(), $now->toDateString()],
             'this_week' => [$now->copy()->startOfWeek()->toDateString(), $now->copy()->endOfWeek()->toDateString()],
@@ -88,6 +94,11 @@ class SummaryService
 
     private function getPeriodLabel(string $period): string
     {
+        if (str_starts_with($period, 'specific_month:')) {
+            $ym = Carbon::parse(substr($period, strlen('specific_month:')) . '-01');
+            return $ym->translatedFormat('F Y'); // e.g. "Juli 2026"
+        }
+
         return match ($period) {
             'today' => 'hari ini',
             'this_week' => 'minggu ini',

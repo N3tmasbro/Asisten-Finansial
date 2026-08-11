@@ -13,10 +13,28 @@ class TrendService
     ) {}
 
     /**
+     * Derive the previous comparable period for a given period string.
+     */
+    private function previousPeriod(string $period): string
+    {
+        if (str_starts_with($period, 'specific_month:')) {
+            $ym = Carbon::parse(substr($period, strlen('specific_month:')) . '-01')->subMonth();
+            return 'specific_month:' . $ym->format('Y-m');
+        }
+        return match ($period) {
+            'this_week' => 'last_week',
+            'this_year' => 'last_year',
+            'this_month' => 'last_month',
+            default => 'last_month',
+        };
+    }
+
+    /**
      * Compare two periods (e.g., this month vs last month).
      */
-    public function comparePeriods(int $userId, string $currentPeriod = 'this_month', string $previousPeriod = 'last_month'): array
+    public function comparePeriods(int $userId, string $currentPeriod = 'this_month', string $previousPeriod = null): array
     {
+        $previousPeriod = $previousPeriod ?? $this->previousPeriod($currentPeriod);
         [$currentFrom, $currentTo] = $this->summaryService->resolvePeriod($currentPeriod);
         [$prevFrom, $prevTo] = $this->summaryService->resolvePeriod($previousPeriod);
 
@@ -93,8 +111,9 @@ class TrendService
     /**
      * Compare spending per category between two periods.
      */
-    public function categoryTrend(int $userId, string $currentPeriod = 'this_month', string $previousPeriod = 'last_month'): array
+    public function categoryTrend(int $userId, string $currentPeriod = 'this_month', string $previousPeriod = null): array
     {
+        $previousPeriod = $previousPeriod ?? $this->previousPeriod($currentPeriod);
         [$currentFrom, $currentTo] = $this->summaryService->resolvePeriod($currentPeriod);
         [$prevFrom, $prevTo] = $this->summaryService->resolvePeriod($previousPeriod);
 
