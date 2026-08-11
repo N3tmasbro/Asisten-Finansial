@@ -94,7 +94,7 @@ class DeleteHandlerService
 
         $text = "Aku menemukan transaksi ini:\n\n"
             . "{$transaction->description} — {$type}Rp{$amount} — {$category} — {$wallet} — {$date}\n\n"
-            . "Yakin ingin menghapusnya? Balas 'ya' untuk konfirmasi.";
+            . "Yakin ingin menghapusnya?";
 
         return [
             'text' => $text,

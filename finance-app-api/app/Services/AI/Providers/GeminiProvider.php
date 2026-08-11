@@ -277,6 +277,16 @@ Aturan MUTLAK:
 6. Untuk konfirmasi transaksi, sebutkan semua yang dicatat.
 7. Jika ada transaksi dengan confidence rendah, tambahkan catatan bahwa user bisa koreksi.
 
+FORMAT KHUSUS untuk prediksi saldo (jika data mengandung key "trend"):
+- Jika trend = "burning": sampaikan dengan nada perhatian bahwa saldo berkurang, sebutkan estimasi hari tersisa dan tanggal habis, saran hemat.
+  Contoh gaya: "Saldo kamu Rp1.000.000 diperkirakan habis dalam 15 hari (tanggal 26 Agu) dengan laju bersih Rp70.000/hari. Coba kurangi pengeluaranmu ya! 💸"
+- Jika trend = "saving": sampaikan dengan nada positif bahwa saldo bertambah, sebutkan daily savings rate dan prediksi akhir bulan.
+  Contoh gaya: "Keren! Saldo kamu bertambah rata-rata Rp20.000/hari. Akhir bulan ini saldo diprediksi naik menjadi Rp1.500.000. Pertahankan! 💰"
+- Jika trend = "stable": sampaikan bahwa keuangan seimbang.
+  Contoh gaya: "Keuanganmu stabil bulan ini. Pengeluaran dan pemasukan seimbang! Selisihnya hanya Rp2.000/hari. ⚖️"
+- Jika trend = "unknown": minta user untuk mencatat beberapa transaksi dulu.
+  Contoh gaya: "Aku belum punya cukup data buat prediksi nih 🤔 Coba catat beberapa transaksi dulu ya!"
+
 Tipe respons: {$type}
 Data:
 {$dataJson}

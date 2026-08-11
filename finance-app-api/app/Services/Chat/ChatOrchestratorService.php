@@ -243,16 +243,17 @@ class ChatOrchestratorService
         }
 
         $messageLower = mb_strtolower(trim($message));
+        $candidates = $pending['candidates'] ?? [];
 
-        // Try to extract a number selection
-        $selectedIndex = $this->extractSelectionNumber($messageLower);
+        // Try to extract selection number(s)
+        $selectedIndices = $this->extractSelectionNumbers($messageLower, count($candidates));
 
-        if ($selectedIndex !== null) {
-            $candidates = $pending['candidates'] ?? [];
-            if ($selectedIndex >= 0 && $selectedIndex < count($candidates)) {
-                $selectedCandidate = $candidates[$selectedIndex];
-                $this->clearPendingMetadata($lastOutgoing);
+        if ($selectedIndices !== null) {
+            $this->clearPendingMetadata($lastOutgoing);
 
+            // Single selection — original behavior
+            if (count($selectedIndices) === 1) {
+                $selectedCandidate = $candidates[$selectedIndices[0]];
                 return $this->executeSelectionAction(
                     $user,
                     $pending['action'] ?? '',
@@ -261,7 +262,20 @@ class ChatOrchestratorService
                 );
             }
 
-            return "Nomor tidak valid 🤔 Pilih antara 1 sampai " . count($candidates);
+            // Multi-selection — bulk action (currently only delete supports this)
+            $action = $pending['action'] ?? '';
+            if ($action === 'delete') {
+                return $this->executeBulkDelete($user, $candidates, $selectedIndices);
+            }
+
+            // For other actions, process first item only
+            $selectedCandidate = $candidates[$selectedIndices[0]];
+            return $this->executeSelectionAction(
+                $user,
+                $action,
+                $selectedCandidate,
+                $pending['original_changes'] ?? null
+            );
         }
 
         // Not a number — clear pending and treat as new message
@@ -284,26 +298,99 @@ class ChatOrchestratorService
     }
 
     /**
-     * Extract selection number from user message.
-     * Handles: "1", "nomor 1", "no 1", "yang ke-1", "yang pertama", etc.
+     * Execute bulk deletion of multiple selected candidates.
      */
-    private function extractSelectionNumber(string $message): ?int
+    private function executeBulkDelete(User $user, array $candidates, array $selectedIndices): string
     {
-        // Direct number: "1", "2", "3"
+        $deleted = [];
+        $failed = [];
+
+        foreach ($selectedIndices as $index) {
+            $candidate = $candidates[$index] ?? null;
+            if (!$candidate) continue;
+
+            $transactionId = $candidate['id'] ?? 0;
+            try {
+                $result = $this->deleteHandler->executeDelete($user, $transactionId);
+                $deleted[] = $candidate['description'] ?? "#{$transactionId}";
+            } catch (\Exception $e) {
+                $failed[] = $candidate['description'] ?? "#{$transactionId}";
+            }
+        }
+
+        $response = '';
+        if (!empty($deleted)) {
+            $count = count($deleted);
+            $response .= "✅ {$count} transaksi berhasil dihapus:\n";
+            foreach ($deleted as $desc) {
+                $response .= "  • {$desc}\n";
+            }
+        }
+
+        if (!empty($failed)) {
+            $response .= "\n❌ Gagal menghapus: " . implode(', ', $failed);
+        }
+
+        return trim($response) ?: "Tidak ada transaksi yang dihapus.";
+    }
+
+    /**
+     * Extract selection number(s) from user message.
+     * Handles: "1", "nomor 1", "1-5", "1,3,5", "semua", "yang pertama", etc.
+     * Returns array of 0-indexed indices, or null if no selection detected.
+     */
+    private function extractSelectionNumbers(string $message, int $candidateCount): ?array
+    {
+        // "semua" / "all" / "semuanya"
+        if (preg_match('/^(semua|semuanya|all)$/i', $message)) {
+            return range(0, $candidateCount - 1);
+        }
+
+        // Range: "1-5", "1 - 5", "1 sampai 5"
+        if (preg_match('/^(\d+)\s*[-–—]\s*(\d+)$/', $message, $matches)
+            || preg_match('/^(\d+)\s+sampai\s+(\d+)$/i', $message, $matches)) {
+            $start = (int) $matches[1];
+            $end = (int) $matches[2];
+            if ($start >= 1 && $end >= $start && $end <= $candidateCount) {
+                return range($start - 1, $end - 1);
+            }
+        }
+
+        // Comma-separated: "1,3,5" or "1, 3, 5"
+        if (preg_match('/^\d+(\s*,\s*\d+)+$/', $message)) {
+            $nums = array_map('intval', preg_split('/\s*,\s*/', $message));
+            $indices = [];
+            foreach ($nums as $n) {
+                if ($n >= 1 && $n <= $candidateCount) {
+                    $indices[] = $n - 1;
+                }
+            }
+            return !empty($indices) ? $indices : null;
+        }
+
+        // Direct single number: "1", "2", "3"
         if (preg_match('/^(\d+)$/', $message, $matches)) {
-            return ((int) $matches[1]) - 1; // 0-indexed
+            $n = (int) $matches[1];
+            if ($n >= 1 && $n <= $candidateCount) {
+                return [$n - 1];
+            }
+            return null;
         }
 
         // "nomor 1", "no 1", "no. 1", "ke-1", "ke 1"
         if (preg_match('/(?:nomor|no\.?|ke[- ]?)(\d+)/i', $message, $matches)) {
-            return ((int) $matches[1]) - 1;
+            $n = (int) $matches[1];
+            if ($n >= 1 && $n <= $candidateCount) {
+                return [$n - 1];
+            }
+            return null;
         }
 
         // Indonesian ordinals
         $ordinals = ['pertama' => 0, 'kedua' => 1, 'ketiga' => 2, 'keempat' => 3, 'kelima' => 4];
         foreach ($ordinals as $word => $index) {
-            if (str_contains($message, $word)) {
-                return $index;
+            if (str_contains($message, $word) && $index < $candidateCount) {
+                return [$index];
             }
         }
 
@@ -378,7 +465,16 @@ class ChatOrchestratorService
             'ai_raw_response' => !empty($metadata) ? $metadata : null,
         ]);
 
-        $this->whatsAppProvider->sendMessage($replyTo, $responseText);
+        if (is_array($result) && isset($result['pending_confirmation'])) {
+            // Try sending as an interactive Poll confirmation
+            $pollSent = $this->whatsAppProvider->sendPoll($replyTo, $responseText, ['Ya', 'Tidak']);
+            if (!$pollSent) {
+                // Fallback to regular text message if poll fails
+                $this->whatsAppProvider->sendMessage($replyTo, $responseText . "\n\nBalas 'ya' atau 'tidak'.");
+            }
+        } else {
+            $this->whatsAppProvider->sendMessage($replyTo, $responseText);
+        }
     }
 
     // ─────────────────────────────────────────────────────

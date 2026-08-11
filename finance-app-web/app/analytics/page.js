@@ -143,6 +143,11 @@ export default function AnalyticsPage() {
   const incomeChange = trends?.comparison?.income?.change_percent || 0;
   const daysLeft = prediction?.days_left_in_month || 0;
   const predictedBalance = prediction?.predicted_month_end_balance || 0;
+  const predictionTrend = prediction?.trend || 'unknown';
+  const dailyNetBurn = prediction?.daily_net_burn || 0;
+  const dailySavingsRate = prediction?.daily_savings_rate || 0;
+  const daysUntilEmpty = prediction?.days_until_empty;
+  const predictedEmptyDate = prediction?.predicted_empty_date;
 
   const mainFilters = ['this_year', 'this_month', 'this_week'];
   const isMonthPickerActive = period.startsWith('specific_month:');
@@ -233,12 +238,44 @@ export default function AnalyticsPage() {
                 </span>
               )}
             </div>
-            {/* Prediction card — only relevant for monthly/yearly periods */}
+            {/* Prediction card — trend-aware with dynamic colors */}
             {periodInfo.isMonthly ? (
               <div className="stat-card accent">
                 <p className="text-xs font-medium text-gray-400 mb-1">Prediksi Saldo Akhir Bulan</p>
-                <p className="text-2xl font-extrabold tracking-tight">{formatRupiah(predictedBalance)}</p>
-                {daysLeft > 0 && <p className="text-xs text-gray-500 mt-2">{daysLeft} hari tersisa</p>}
+                <p className={`text-2xl font-extrabold tracking-tight ${
+                  predictionTrend === 'burning' ? 'text-rose-400'
+                  : predictionTrend === 'saving' ? 'text-emerald-400'
+                  : predictionTrend === 'stable' ? 'text-sky-400'
+                  : 'text-gray-400'
+                }`}>
+                  {predictionTrend === 'unknown' ? '—' : formatRupiah(predictedBalance)}
+                </p>
+
+                {/* Trend-specific detail */}
+                {predictionTrend === 'burning' && daysUntilEmpty && (
+                  <div className="mt-2">
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-amber-400 bg-amber-400/10">
+                      ⚠️ Saldo habis dalam {daysUntilEmpty} hari
+                    </span>
+                    <p className="text-xs text-gray-500 mt-1.5">
+                      Laju: -{formatRupiah(Math.abs(dailyNetBurn))}/hari
+                    </p>
+                  </div>
+                )}
+                {predictionTrend === 'saving' && (
+                  <div className="mt-2">
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-emerald-400 bg-emerald-400/10">
+                      💰 +{formatRupiah(dailySavingsRate)}/hari
+                    </span>
+                    <p className="text-xs text-gray-500 mt-1.5">{daysLeft} hari tersisa</p>
+                  </div>
+                )}
+                {predictionTrend === 'stable' && (
+                  <p className="text-xs text-gray-500 mt-2">⚖️ Keuangan seimbang • {daysLeft} hari tersisa</p>
+                )}
+                {predictionTrend === 'unknown' && (
+                  <p className="text-xs text-gray-500 mt-2">Belum cukup data transaksi</p>
+                )}
               </div>
             ) : (
               <div className="stat-card accent">

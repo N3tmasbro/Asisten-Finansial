@@ -24,6 +24,16 @@ interface WhatsAppProviderInterface
     public function sendButtons(string $phoneNumber, string $message, array $buttons): bool;
 
     /**
+     * Send a poll message (interactive yes/no/options).
+     *
+     * @param string $phoneNumber The recipient's phone number or JID
+     * @param string $question The poll question
+     * @param array $options List of option texts
+     * @return bool Whether the message was sent successfully
+     */
+    public function sendPoll(string $phoneNumber, string $question, array $options): bool;
+
+    /**
      * Check the connection status of a WhatsApp session.
      *
      * @param string $sessionId The session identifier

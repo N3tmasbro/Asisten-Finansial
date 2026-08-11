@@ -62,6 +62,39 @@ class BaileysProvider implements WhatsAppProviderInterface
         return $this->sendMessage($phoneNumber, trim($buttonText));
     }
 
+    public function sendPoll(string $phoneNumber, string $question, array $options): bool
+    {
+        try {
+            $response = Http::post("{$this->bridgeUrl}/send", [
+                'to' => $phoneNumber,
+                'poll' => [
+                    'name' => $question,
+                    'options' => $options,
+                ],
+                'bridge_secret' => $this->bridgeSecret,
+            ]);
+
+            if ($response->successful()) {
+                Log::info('WhatsApp poll sent', ['to' => $phoneNumber]);
+                return true;
+            }
+
+            Log::error('WhatsApp bridge poll error', [
+                'to' => $phoneNumber,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return false;
+        } catch (\Exception $e) {
+            Log::error('WhatsApp bridge poll exception', [
+                'to' => $phoneNumber,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
     public function getConnectionStatus(string $sessionId): string
     {
         try {

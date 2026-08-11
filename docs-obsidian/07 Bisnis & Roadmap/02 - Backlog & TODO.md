@@ -11,13 +11,13 @@ Daftar hal yang **belum selesai** atau **perlu didiskusikan** lebih lanjut.
 ## 🔴 Prioritas Tinggi
 
 - [ ] **Finalisasi harga tier subscription** — perlu dihitung ulang setelah tahu estimasi biaya WhatsApp Business API per percakapan
-- [ ] **Strategi testing prompt AI** — kumpulan variasi kalimat nyata (typo, bahasa gaul, tanpa tanda baca) untuk validasi akurasi parsing sebelum launch
+- [x] **Strategi testing prompt AI** — 90 test cases (Intent/Extractor/Command/Query), baseline 100% MockAI pass. Gap analysis & improvement backlog di [[../06 AI & Integrasi/03 - Test Cases & Hasil]]
 
 ---
 
 ## 🟡 Prioritas Sedang
 
-- [ ] **Algoritma `BalancePredictionService`** — pendekatan prediksi saldo (moving average sederhana vs metode lain) belum ditentukan
+- [x] **Algoritma `BalancePredictionService`** — top 10% outlier trimming, dynamic lookback (7-30 hari), trend classification (burning/saving/stable/unknown), terintegrasi ke prompt WhatsApp AI & dashboard Next.js
 - [ ] **Struktur Next.js dashboard yang lebih detail** — state management, integrasi API, komponen chart yang dipakai (recharts/chart.js), belum dibahas mendalam
 - [ ] **Integrasi API Frontend** — menghubungkan halaman Next.js yang ada ke endpoints Laravel yang baru saja kita bangun
 

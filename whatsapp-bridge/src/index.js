@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const fs = require('fs');
 const path = require('path');
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, decryptPollVote } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const { Boom } = require('@hapi/boom');
 const qrcode = require('qrcode-terminal');
@@ -90,6 +90,92 @@ async function connectToWhatsApp() {
 
     // Save credentials on update
     sock.ev.on('creds.update', saveCreds);
+
+    // Handle message updates (like poll votes)
+    sock.ev.on('messages.update', async (updates) => {
+        for (const update of updates) {
+            const pollUpdates = update.update?.pollUpdates;
+            if (!pollUpdates || pollUpdates.length === 0) continue;
+
+            const pollMsgId = update.key.id;
+            const remoteJid = update.key.remoteJid;
+
+            console.log(`🗳️ Poll update detected for message ${pollMsgId}`);
+
+            const { getPoll, hashOption } = require('./polls');
+            const poll = getPoll(pollMsgId);
+            if (!poll) {
+                console.log(`⚠️ Poll update received for unknown poll ${pollMsgId}`);
+                continue;
+            }
+
+            for (const voteUpdate of pollUpdates) {
+                try {
+                    const voterJid = voteUpdate.pollUpdateMessageKey?.participant
+                        || voteUpdate.senderJid
+                        || remoteJid;
+                    const identifier = voterJid
+                        .replace('@s.whatsapp.net', '')
+                        .replace('@lid', '');
+
+                    console.log(`🗳️ Decrypting vote from ${identifier}...`);
+
+                    const decryptedVote = decryptPollVote(
+                        voteUpdate.vote,
+                        {
+                            pollCreatorJid: sock.user.id,
+                            pollMsgId: pollMsgId,
+                            pollEncKey: poll.messageSecret,
+                            voterJid: voterJid
+                        }
+                    );
+
+                    const selectedHashes = (decryptedVote.selectedOptions || []).map(
+                        opt => Buffer.isBuffer(opt) ? opt.toString('hex') : opt
+                    );
+
+                    console.log(`🗳️ Decrypted hashes: ${JSON.stringify(selectedHashes)}`);
+
+                    if (selectedHashes.length === 0) {
+                        console.log(`🗳️ Voter ${identifier} cleared their vote on poll ${pollMsgId}`);
+                        continue;
+                    }
+
+                    // Match hashes to option text
+                    const selectedOptions = [];
+                    for (const option of poll.options) {
+                        const optionHash = hashOption(option);
+                        if (selectedHashes.includes(optionHash)) {
+                            selectedOptions.push(option);
+                        }
+                    }
+
+                    if (selectedOptions.length > 0) {
+                        console.log(`🗳️ Poll vote from ${identifier}: [${selectedOptions.join(', ')}]`);
+
+                        const chosenOption = selectedOptions[0];
+                        
+                        await forwardToLaravel({
+                            from: identifier,
+                            reply_jid: voterJid,
+                            message: chosenOption,
+                            is_poll_vote: true,
+                            poll_message_id: pollMsgId,
+                            timestamp: Math.floor(Date.now() / 1000),
+                            message_id: `pollvote-${pollMsgId}-${Date.now()}`
+                        });
+                        console.log(`✅ Forwarded poll vote to Laravel`);
+                    } else {
+                        console.log(`⚠️ No matching options found. Option hashes: ${poll.options.map(o => hashOption(o)).join(', ')}`);
+                    }
+
+                } catch (error) {
+                    console.error(`❌ Failed to process poll vote: ${error.message}`);
+                    console.error(error.stack);
+                }
+            }
+        }
+    });
 
     // Handle incoming messages
     sock.ev.on('messages.upsert', async ({ messages, type }) => {

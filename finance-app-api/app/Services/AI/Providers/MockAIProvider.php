@@ -21,7 +21,7 @@ class MockAIProvider implements AIProviderInterface
         $message = mb_strtolower($message);
 
         // Check for delete keywords
-        if (preg_match('/(hapus|delete|hilangkan|batalkan\s+(?:transaksi|yang))/i', $message)) {
+        if (preg_match('/(hapus|hapusin|delete|hilangkan|batalkan\s+(?:transaksi|yang))/i', $message)) {
             return new IntentClassificationDTO(MessageIntent::DeleteTransaction, 0.85);
         }
 
@@ -46,7 +46,7 @@ class MockAIProvider implements AIProviderInterface
         }
 
         // Check for greeting keywords
-        if (preg_match('/^(halo|hai|hi|hey|pagi|siang|sore|malam|terima kasih|thanks|makasih|siapa)/i', $message)) {
+        if (preg_match('/^(halo|hai|hi|hey|selamat\s+(?:pagi|siang|sore|malam)|pagi|siang|sore|malam|terima kasih|thanks|makasih|siapa)/i', $message)) {
             return new IntentClassificationDTO(MessageIntent::GreetingSmallTalk, 0.90);
         }
 
@@ -164,7 +164,7 @@ class MockAIProvider implements AIProviderInterface
         $messageLower = mb_strtolower($message);
 
         // Delete transaction
-        if (preg_match('/(hapus|delete|hilangkan)\s+(?:yang\s+|transaksi\s+)?(.+)/i', $messageLower, $matches)) {
+        if (preg_match('/(hapus|hapusin|delete|hilangkan)\s+(?:yang\s+|transaksi\s+)?(.+)/i', $messageLower, $matches)) {
             $description = trim($matches[2]);
             return FinancialCommandDTO::fromAIResponse([
                 'action' => 'delete_transaction',
@@ -173,8 +173,8 @@ class MockAIProvider implements AIProviderInterface
             ], $message);
         }
 
-        // Create wallet
-        if (preg_match('/(?:buat|tambah)\s+wallet\s+(.+)/i', $messageLower, $matches)) {
+        // Create wallet — use original message to preserve case
+        if (preg_match('/(?:buat|tambah)\s+wallet\s+(.+)/i', $message, $matches)) {
             return FinancialCommandDTO::fromAIResponse([
                 'action' => 'create_wallet',
                 'data' => ['name' => trim($matches[1])],
@@ -182,8 +182,8 @@ class MockAIProvider implements AIProviderInterface
             ], $message);
         }
 
-        // Rename wallet
-        if (preg_match('/(?:rename|ganti\s+nama)\s+wallet\s+(.+?)\s+(?:jadi|ke|menjadi)\s+(.+)/i', $messageLower, $matches)) {
+        // Rename wallet — use original message to preserve case
+        if (preg_match('/(?:rename|ganti\s+nama)\s+wallet\s+(.+?)\s+(?:jadi|ke|menjadi)\s+(.+)/i', $message, $matches)) {
             return FinancialCommandDTO::fromAIResponse([
                 'action' => 'rename_wallet',
                 'data' => ['old_name' => trim($matches[1]), 'new_name' => trim($matches[2])],
@@ -191,8 +191,8 @@ class MockAIProvider implements AIProviderInterface
             ], $message);
         }
 
-        // Create category
-        if (preg_match('/(?:buat|tambah)\s+kategori\s+(.+)/i', $messageLower, $matches)) {
+        // Create category — use original message to preserve case
+        if (preg_match('/(?:buat|tambah)\s+kategori\s+(.+)/i', $message, $matches)) {
             return FinancialCommandDTO::fromAIResponse([
                 'action' => 'create_category',
                 'data' => ['name' => trim($matches[1]), 'type' => 'expense'],
@@ -347,7 +347,7 @@ class MockAIProvider implements AIProviderInterface
         $keywordMap = [
             'Makan & Minum' => ['makan', 'kopi', 'nasi', 'ayam', 'minum', 'restoran', 'warung', 'snack', 'jajan', 'bakso', 'soto', 'gorengan', 'es', 'teh', 'susu'],
             'Transport' => ['bensin', 'parkir', 'grab', 'gojek', 'ojek', 'taxi', 'tol', 'bus', 'kereta', 'bbm', 'pertamax', 'solar', 'uber', 'angkot'],
-            'Belanja' => ['beli', 'belanja', 'shopee', 'tokopedia', 'lazada', 'toko', 'mall', 'baju', 'sepatu', 'tas'],
+            'Belanja' => ['belanja', 'shopee', 'tokopedia', 'lazada', 'toko', 'mall', 'baju', 'sepatu', 'tas'],
             'Tagihan' => ['listrik', 'air', 'pln', 'pdam', 'internet', 'wifi', 'pulsa', 'kuota', 'iuran', 'cicilan', 'kredit'],
             'Hiburan' => ['nonton', 'bioskop', 'netflix', 'spotify', 'game', 'main', 'liburan', 'wisata', 'piknik'],
             'Kesehatan' => ['obat', 'dokter', 'rumah sakit', 'rs', 'apotek', 'vitamin', 'klinik'],
