@@ -50,3 +50,6 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Private business/monetization plans
+/docs-obsidian/07 Bisnis & Roadmap/01 - Model Monetisasi.md
