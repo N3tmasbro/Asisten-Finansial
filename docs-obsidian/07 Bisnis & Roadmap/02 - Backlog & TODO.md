@@ -19,7 +19,7 @@ Daftar hal yang **belum selesai** atau **perlu didiskusikan** lebih lanjut.
 
 - [x] **Algoritma `BalancePredictionService`** — top 10% outlier trimming, dynamic lookback (7-30 hari), trend classification (burning/saving/stable/unknown), terintegrasi ke prompt WhatsApp AI & dashboard Next.js
 - [ ] **Struktur Next.js dashboard yang lebih detail** — state management, integrasi API, komponen chart yang dipakai (recharts/chart.js), belum dibahas mendalam
-- [ ] **Integrasi API Frontend** — menghubungkan halaman Next.js yang ada ke endpoints Laravel yang baru saja kita bangun
+- [x] **Integrasi API Frontend** — menghubungkan halaman Next.js yang ada ke endpoints Laravel yang baru saja kita bangun
 
 ---
 
