@@ -26,7 +26,7 @@ Daftar hal yang **belum selesai** atau **perlu didiskusikan** lebih lanjut.
 ## 🟢 Prioritas Rendah / Nanti
 
 - [x] **Prompt untuk fitur "Pengingat Cerdas"** — deteksi pola transaksi rutin otomatis (2 bulan berturut-turut), kirim WA H-3 & H-1 via Laravel Scheduler
-- [ ] **Prompt & logic untuk "Saran Penghematan"** — bagaimana AI menghitung dan memformat saran (`"jika mengurangi X 20%, bisa menabung Y"`)
+- [x] **Prompt & logic untuk "Saran Penghematan"** — top 3 kategori terboros bulan ini vs bulan lalu, saran potensial hemat 20%, dipicu via WA chat (intent: savings_advice)
 - [ ] **Integrasi payment gateway** — pemilihan provider (Midtrans vs lainnya) dan alur `Subscription` lifecycle (upgrade, downgrade, gagal bayar) belum dibahas teknis
 - [ ] **Kebijakan migrasi Baileys → WhatsApp Business API resmi** — trigger/threshold kapan harus migrasi (jumlah user? volume pesan?) belum ditentukan angka pastinya
 

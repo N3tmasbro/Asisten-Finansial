@@ -64,6 +64,7 @@ Intent yang tersedia:
 - "correction": user ingin MENGUBAH transaksi yang SUDAH ADA di sistem — ditandai kata: "yang tadi", "yang kemarin", "harusnya", "salah", "koreksi", "ubah", "ganti", "ralat", "bukan" (contoh: "yang kopi tadi harusnya Hiburan", "yang bensin salah harusnya 80rb", "koreksi yang tadi jadi 50rb", "bukan BCA tapi Cash")
 - "delete_transaction": user ingin MENGHAPUS transaksi yang sudah ada (contoh: "hapus yang bensin tadi", "delete transaksi terakhir", "batalkan yang kopi", "hilangkan transaksi bensin")
 - "inspect_records": user ingin MELIHAT data yang ada tanpa mengubah apapun (contoh: "saldo BCA berapa?", "saldo semua wallet", "transaksi terakhir apa?", "daftar wallet", "daftar kategori", "budget makan bulan ini?", "riwayat transaksi", "cek saldo")
+- "savings_advice": user ingin saran penghematan atau tips hemat keuangan (contoh: "kasih saran dong", "di mana bisa aku hemat?", "tips hemat", "gimana caranya aku bisa nabung?", "pengeluaranku boros di mana?")
 - "manage_records": user ingin MEMBUAT atau MENGUBAH wallet/kategori/budget (contoh: "buat wallet Dana", "tambah kategori Investasi", "buat budget makan 2 juta", "rename wallet BCA jadi BCA Digital", "naikkan budget makan jadi 2,5 juta")
 - "greeting_smalltalk": sapaan atau obrolan ringan (contoh: "halo", "terima kasih", "siapa kamu?")
 - "unclear": pesan tidak jelas atau tidak terkait keuangan
@@ -286,6 +287,14 @@ FORMAT KHUSUS untuk prediksi saldo (jika data mengandung key "trend"):
   Contoh gaya: "Keuanganmu stabil bulan ini. Pengeluaran dan pemasukan seimbang! Selisihnya hanya Rp2.000/hari. ⚖️"
 - Jika trend = "unknown": minta user untuk mencatat beberapa transaksi dulu.
   Contoh gaya: "Aku belum punya cukup data buat prediksi nih 🤔 Coba catat beberapa transaksi dulu ya!"
+
+FORMAT KHUSUS untuk saran penghematan (jika data mengandung key "suggestions"):
+- Tampilkan maksimal 3 saran konkret berdasarkan kategori terboros.
+- Untuk setiap kategori, sebutkan pengeluaran bulan ini, perbandingan bulan lalu (naik/turun), dan potensi hemat jika dikurangi 20%.
+- Gunakan nada positif dan memotivasi, bukan menghakimi.
+- Selalu tutup dengan total estimasi penghematan jika semua saran diterapkan.
+- Contoh gaya: "💡 Bulan ini kamu paling boros di Ngopi (Rp500.000, naik 20% dari bulan lalu). Kalau dikurangi 20%, kamu bisa hemat Rp100.000/bulan!"
+- Jika tidak ada data transaksi (has_data = false): "Aku belum punya data cukup untuk kasih saran nih 🤔 Coba catat transaksi dulu ya!"
 
 FORMAT KHUSUS untuk pengingat tagihan rutin (jika data mengandung key "reminder_type"):
 - Jika reminder_type = "h3": kirim pengingat awal yang santai, sebutkan nama tagihan dan estimasi nominal.

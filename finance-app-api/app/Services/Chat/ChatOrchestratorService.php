@@ -11,6 +11,7 @@ use App\Models\ChatMessage;
 use App\Models\User;
 use App\Repositories\TransactionRepository;
 use App\Services\Analytics\BalancePredictionService;
+use App\Services\Analytics\SavingsAdviceService;
 use App\Services\Analytics\SummaryService;
 use App\Services\Analytics\TrendService;
 use App\Services\Transaction\CategoryMatcherService;
@@ -37,6 +38,7 @@ class ChatOrchestratorService
         private SummaryService $summaryService,
         private TrendService $trendService,
         private BalancePredictionService $predictionService,
+        private SavingsAdviceService $savingsAdviceService,
         private CorrectionHandlerService $correctionHandler,
         private DeleteHandlerService $deleteHandler,
         private InspectHandlerService $inspectHandler,
@@ -117,6 +119,7 @@ class ChatOrchestratorService
                 MessageIntent::DeleteTransaction => $this->deleteHandler->handle($user, $dto->message, $chatMessage),
                 MessageIntent::InspectRecords => $this->inspectHandler->handle($user, $dto->message),
                 MessageIntent::ManageRecords => $this->manageHandler->handle($user, $dto->message, $chatMessage),
+                MessageIntent::SavingsAdvice => $this->handleSavingsAdvice($user),
                 MessageIntent::GreetingSmallTalk => $this->handleGreeting($user),
                 MessageIntent::Unclear => $this->handleUnclear(),
             };
@@ -558,6 +561,13 @@ class ChatOrchestratorService
 
         // Stage 3: Format response
         return $this->aiProvider->formatResponse('query_result', $data);
+    }
+
+    private function handleSavingsAdvice(User $user): string
+    {
+        $advice = $this->savingsAdviceService->generateAdvice($user->id);
+
+        return $this->aiProvider->formatResponse('savings_advice', $advice);
     }
 
     private function handleGreeting(User $user): string

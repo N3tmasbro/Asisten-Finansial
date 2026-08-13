@@ -10,6 +10,7 @@ enum MessageIntent: string
     case DeleteTransaction = 'delete_transaction';
     case InspectRecords = 'inspect_records';
     case ManageRecords = 'manage_records';
+    case SavingsAdvice = 'savings_advice';
     case GreetingSmallTalk = 'greeting_smalltalk';
     case Unclear = 'unclear';
 }
