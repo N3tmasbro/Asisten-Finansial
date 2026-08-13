@@ -10,7 +10,7 @@ Daftar hal yang **belum selesai** atau **perlu didiskusikan** lebih lanjut.
 
 ## 🔴 Prioritas Tinggi
 
-- [ ] **Finalisasi harga tier subscription** — perlu dihitung ulang setelah tahu estimasi biaya WhatsApp Business API per percakapan
+- [ ] **Finalisasi harga tier subscription** — *(Ditunda hingga rilis produksi/monetisasi)* Rencana draf lokal & hitungan COGS tersimpan di [[01 - Model Monetisasi]]
 - [x] **Strategi testing prompt AI** — 90 test cases (Intent/Extractor/Command/Query), baseline 100% MockAI pass. Gap analysis & improvement backlog di [[../06 AI & Integrasi/03 - Test Cases & Hasil]]
 
 ---
