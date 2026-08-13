@@ -115,33 +115,48 @@ class RecurringPatternDetectorService
 
     /**
      * Normalize a transaction description to a simple fingerprint key.
-     * E.g., "Bayar Wifi Indihome" → "bayar wifi indihome"
+     *
+     * Strategy: strip common action words (stopwords like "bayar", "beli", "buat"),
+     * then take the first 2 remaining meaningful keywords. This allows:
+     *   "Bayar Wifi"         → "wifi"
+     *   "Bayar Wifi Indihome" → "wifi"
+     *   "Isi bensin"         → "bensin"
      */
     private function normalizeDescription(string $description): string
     {
+        $stopwords = [
+            'bayar', 'beli', 'buat', 'biaya', 'cicilan', 'tagihan',
+            'isi', 'top', 'topup', 'transfer', 'kirim', 'beli', 'the',
+            'untuk', 'ke', 'dari', 'di', 'dan', 'atau',
+        ];
+
         $cleaned = strtolower(trim($description));
         $cleaned = preg_replace('/[^a-z0-9\s]/u', '', $cleaned);
-        $cleaned = preg_replace('/\s+/', ' ', $cleaned);
-        return $cleaned;
+        $words   = preg_split('/\s+/', $cleaned, -1, PREG_SPLIT_NO_EMPTY);
+
+        // Remove stopwords
+        $keywords = array_values(array_filter($words, fn($w) => !in_array($w, $stopwords) && strlen($w) > 1));
+
+        // Take the FIRST meaningful keyword as the fingerprint (most stable part of a description)
+        return implode(' ', array_slice($keywords, 0, 1));
     }
 
     /**
-     * Group transactions by (normalized_description + amount_bucket) fingerprint.
-     * Amount bucket: rounded to nearest 10% band to allow slight variation.
+     * Group transactions by fingerprint (first 2 keywords of description).
+     * Then filter to only keep groups where amounts are within ±10% of each other.
      */
     private function groupByFingerprint(Collection $transactions): Collection
     {
         return $transactions->groupBy(function ($tx) {
-            $description = $this->normalizeDescription($tx->description);
-            // Round amount to nearest 10% bucket for fuzzy grouping
-            $amountBucket = (int) round($tx->amount / ($tx->amount * self::AMOUNT_TOLERANCE_PERCENT + 1)) * 10;
-            return $description; // Group only by description — filter by amount tolerance after
-        })->filter(function ($group) {
-            // Within each description group, further ensure amounts are within ±10% of each other
-            if ($group->count() < 2) return false;
+            return $this->normalizeDescription($tx->description);
+        })->filter(function ($group, $fingerprint) {
+            // Discard empty fingerprints
+            if (empty($fingerprint) || $group->count() < 2) return false;
+
+            // Within each group, ensure amounts are within ±20% of each other (relaxed for grouping)
             $amounts = $group->pluck('amount');
-            $avg = $amounts->average();
-            return $amounts->every(fn ($a) => abs($a - $avg) / $avg <= self::AMOUNT_TOLERANCE_PERCENT * 2);
+            $avg     = $amounts->average();
+            return $amounts->every(fn ($a) => $avg > 0 && abs($a - $avg) / $avg <= self::AMOUNT_TOLERANCE_PERCENT * 2);
         });
     }
 }
