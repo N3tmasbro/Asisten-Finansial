@@ -12,7 +12,11 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        // Analyze transaction history weekly to detect new recurring patterns
+        $schedule->command('reminder:detect')->weekly()->mondays()->at('07:00');
+
+        // Send H-3 and H-1 WhatsApp reminders every morning
+        $schedule->command('reminder:send')->dailyAt('08:00');
     }
 
     /**

@@ -173,9 +173,9 @@ ORDER BY created_at DESC;
 
 ## ⚠️ Hal yang Perlu Dikembangkan
 
-- [ ] Prompt untuk fitur **Pengingat Cerdas** (deteksi pola transaksi rutin)
+- [x] Prompt & logic untuk fitur **Pengingat Cerdas** (deteksi pola rutin, kirim WA H-3 & H-1 otomatis via scheduler)
 - [ ] Prompt & logic untuk **Saran Penghematan** (`"jika kurangi X 20%, bisa tabung Y"`)
-- [ ] Algoritma **Prediksi Saldo** (moving average vs metode lain)
+- [x] Algoritma **Prediksi Saldo** (outlier trimming, dynamic lookback, trend classification)
 - [ ] Kumpulan test case variasi kalimat nyata (typo, bahasa gaul, tanpa tanda baca)
 - [ ] Expire otomatis `pending_confirmation` & `pending_selection` yang sudah melewati `expires_at`
 

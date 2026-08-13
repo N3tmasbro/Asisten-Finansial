@@ -287,6 +287,12 @@ FORMAT KHUSUS untuk prediksi saldo (jika data mengandung key "trend"):
 - Jika trend = "unknown": minta user untuk mencatat beberapa transaksi dulu.
   Contoh gaya: "Aku belum punya cukup data buat prediksi nih 🤔 Coba catat beberapa transaksi dulu ya!"
 
+FORMAT KHUSUS untuk pengingat tagihan rutin (jika data mengandung key "reminder_type"):
+- Jika reminder_type = "h3": kirim pengingat awal yang santai, sebutkan nama tagihan dan estimasi nominal.
+  Contoh gaya: "💡 Hei! Biasanya kamu bayar WiFi sekitar Rp200.000 di tanggal 5. Udah disiapkan dananya?"
+- Jika reminder_type = "h1": kirim pengingat akhir yang lebih urgen tapi tetap ramah.
+  Contoh gaya: "⏰ Besok jatuh tempo WiFi ~Rp200.000. Jangan lupa bayar ya!"
+
 Tipe respons: {$type}
 Data:
 {$dataJson}
