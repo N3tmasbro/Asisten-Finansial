@@ -7,6 +7,10 @@ class ApiClient {
 
     if (typeof window !== 'undefined') {
       this.token = localStorage.getItem('auth_token');
+      // Sync cookie from localStorage on init — ensures middleware sees the token
+      if (this.token) {
+        document.cookie = `auth_token=${this.token}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`; // 1 day
+      }
     }
   }
 
@@ -15,7 +19,7 @@ class ApiClient {
     if (typeof window !== 'undefined') {
       localStorage.setItem('auth_token', token);
       // Also set cookie so Next.js middleware can read it
-      document.cookie = `auth_token=${token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+      document.cookie = `auth_token=${token}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`; // 1 day
     }
   }
 
@@ -55,10 +59,9 @@ class ApiClient {
     });
 
     if (response.status === 401) {
+      // Clear the invalid token but do NOT redirect here.
+      // AuthContext handles the redirect to avoid competing redirect loops.
       this.clearToken();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
       throw new Error('Unauthorized');
     }
 
@@ -100,6 +103,17 @@ class ApiClient {
 
   async getProfile() {
     return this.request('/auth/profile');
+  }
+
+  async requestPhoneVerification() {
+    return this.request('/auth/request-verification', { method: 'POST' });
+  }
+
+  async verifyPhone(otpCode) {
+    return this.request('/auth/verify-phone', {
+      method: 'POST',
+      body: JSON.stringify({ otp_code: otpCode }),
+    });
   }
 
   // Transactions

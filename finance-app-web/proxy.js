@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 
 /**
- * Next.js Middleware — Route Protection
+ * Next.js Proxy — Route Protection
  *
  * Protects dashboard routes by checking for auth_token cookie.
  * Redirects unauthenticated users to /login.
  * Redirects authenticated users away from /login and /register.
+ *
+ * Migrated from middleware.js → proxy.js (Next.js 16+)
  */
 
 const protectedRoutes = [
@@ -18,9 +20,9 @@ const protectedRoutes = [
   '/settings',
 ];
 
-const authRoutes = ['/login', '/register'];
+const authRoutes = ['/', '/login', '/register'];
 
-export function middleware(request) {
+export function proxy(request) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('auth_token')?.value;
 
@@ -51,6 +53,7 @@ export function middleware(request) {
 
 export const config = {
   matcher: [
+    '/',
     '/dashboard/:path*',
     '/transactions/:path*',
     '/analytics/:path*',

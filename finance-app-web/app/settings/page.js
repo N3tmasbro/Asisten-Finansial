@@ -2,16 +2,31 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import api from '../../lib/api';
 
 export default function SettingsPage() {
-  const { user, isLoading: authLoading, logout } = useAuth();
+  const { user, isLoading: authLoading, logout, refetch } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
   const [bridgeStatus, setBridgeStatus] = useState(null);
   const [bridgeLoading, setBridgeLoading] = useState(true);
 
+  // OTP verification states
+  const [otpStep, setOtpStep] = useState('idle'); // 'idle' | 'sending' | 'input' | 'verifying' | 'success'
+  const [otpCode, setOtpCode] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [otpSuccess, setOtpSuccess] = useState('');
+  const [otpCooldown, setOtpCooldown] = useState(0); // seconds countdown for resend
+
   useEffect(() => {
     fetchBridgeStatus();
   }, []);
+
+  // Cooldown timer for resend OTP
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = setTimeout(() => setOtpCooldown((prev) => prev - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [otpCooldown]);
 
   async function fetchBridgeStatus() {
     setBridgeLoading(true);
@@ -24,6 +39,47 @@ export default function SettingsPage() {
     } finally {
       setBridgeLoading(false);
     }
+  }
+
+  async function handleRequestOtp() {
+    setOtpError('');
+    setOtpSuccess('');
+    setOtpStep('sending');
+    try {
+      await api.requestPhoneVerification();
+      setOtpStep('input');
+      setOtpCooldown(60); // 60s cooldown before resend
+      setOtpCode('');
+    } catch (err) {
+      setOtpError(err.message || 'Gagal mengirim OTP. Coba lagi.');
+      setOtpStep('idle');
+    }
+  }
+
+  async function handleVerifyOtp(e) {
+    e.preventDefault();
+    if (otpCode.length !== 6) {
+      setOtpError('Kode OTP harus 6 digit.');
+      return;
+    }
+    setOtpError('');
+    setOtpStep('verifying');
+    try {
+      await api.verifyPhone(otpCode);
+      setOtpStep('success');
+      setOtpSuccess('Nomor WhatsApp berhasil diverifikasi! 🎉');
+      // Refresh user profile to update phone_verified state
+      await refetch();
+    } catch (err) {
+      setOtpError(err.message || 'Kode OTP tidak valid atau sudah kadaluarsa.');
+      setOtpStep('input');
+    }
+  }
+
+  function handleOtpInput(e) {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setOtpCode(val);
+    setOtpError('');
   }
 
   async function handleLogout() {
@@ -86,6 +142,132 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* WhatsApp Verification Section — shown only if not yet verified */}
+      {!phoneVerified && (
+        <div className="glass-card mb-6" style={{ borderColor: 'rgba(99,102,241,0.2)' }}>
+          <div className="flex items-start gap-4">
+            <div className="text-3xl mt-1">🔐</div>
+            <div className="flex-1">
+              <h2 className="text-lg font-bold mb-1">Verifikasi Nomor WhatsApp</h2>
+              <p className="text-sm text-gray-400 mb-4">
+                Verifikasi nomor WhatsApp kamu agar bot bisa mengenali pesanmu dan mencatat transaksi secara otomatis.
+              </p>
+
+              {/* Success state */}
+              {otpStep === 'success' && (
+                <div className="flex items-center gap-3 p-4 rounded-xl mb-4"
+                  style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                  <span className="text-2xl">🎉</span>
+                  <p className="text-sm font-semibold text-emerald-400">{otpSuccess}</p>
+                </div>
+              )}
+
+              {/* Error message */}
+              {otpError && (
+                <div className="flex items-center gap-2 p-3 rounded-lg mb-4"
+                  style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)' }}>
+                  <span className="text-sm">⚠️</span>
+                  <p className="text-sm text-rose-400">{otpError}</p>
+                </div>
+              )}
+
+              {/* Step: idle — show Send OTP button */}
+              {(otpStep === 'idle' || otpStep === 'sending') && (
+                <div className="flex flex-col gap-3">
+                  <p className="text-xs text-gray-500">
+                    Kode OTP 6 digit akan dikirimkan ke nomor{' '}
+                    <span className="text-white font-medium">+{profile?.phone_number}</span>{' '}
+                    via WhatsApp.
+                  </p>
+                  <button
+                    id="btn-request-otp"
+                    onClick={handleRequestOtp}
+                    disabled={otpStep === 'sending'}
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50"
+                    style={{
+                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                      color: 'white',
+                    }}
+                  >
+                    {otpStep === 'sending' ? (
+                      <span className="flex items-center gap-2 justify-center">
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Mengirim OTP...
+                      </span>
+                    ) : (
+                      '📨 Kirim Kode OTP'
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Step: input or verifying — show OTP input form */}
+              {(otpStep === 'input' || otpStep === 'verifying') && (
+                <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-2">
+                      Masukkan kode 6 digit dari WhatsApp
+                    </label>
+                    <input
+                      id="otp-code-input"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={6}
+                      value={otpCode}
+                      onChange={handleOtpInput}
+                      placeholder="• • • • • •"
+                      autoFocus
+                      className="input-field text-center text-2xl font-bold tracking-[0.5em] w-full"
+                      style={{ letterSpacing: '0.4em' }}
+                    />
+                    <p className="text-xs text-gray-500 mt-1.5">
+                      Kode berlaku selama 10 menit sejak dikirim.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      id="btn-verify-otp"
+                      type="submit"
+                      disabled={otpCode.length !== 6 || otpStep === 'verifying'}
+                      className="px-6 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50"
+                      style={{
+                        background: otpCode.length === 6
+                          ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
+                          : 'rgba(255,255,255,0.05)',
+                        color: 'white',
+                      }}
+                    >
+                      {otpStep === 'verifying' ? (
+                        <span className="flex items-center gap-2">
+                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Memverifikasi...
+                        </span>
+                      ) : (
+                        '✅ Verifikasi'
+                      )}
+                    </button>
+
+                    {/* Resend button with cooldown */}
+                    <button
+                      id="btn-resend-otp"
+                      type="button"
+                      onClick={handleRequestOtp}
+                      disabled={otpCooldown > 0 || otpStep === 'verifying'}
+                      className="text-sm font-medium transition-colors cursor-pointer disabled:opacity-40"
+                      style={{ color: otpCooldown > 0 ? '#6b7280' : '#818cf8' }}
+                    >
+                      {otpCooldown > 0 ? `Kirim ulang (${otpCooldown}s)` : 'Kirim ulang OTP'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* WhatsApp Connection — Dynamic */}
       <div className="glass-card mb-6">
@@ -158,4 +340,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

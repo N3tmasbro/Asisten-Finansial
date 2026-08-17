@@ -12,6 +12,12 @@ Daftar hal yang **belum selesai** atau **perlu didiskusikan** lebih lanjut.
 
 - [ ] **Finalisasi harga tier subscription** — *(Ditunda hingga rilis produksi/monetisasi)* Rencana draf lokal & hitungan COGS tersimpan di [[01 - Model Monetisasi]]
 - [x] **Strategi testing prompt AI** — 90 test cases (Intent/Extractor/Command/Query), baseline 100% MockAI pass. Gap analysis & improvement backlog di [[../06 AI & Integrasi/03 - Test Cases & Hasil]]
+- [x] **[BUG-001] Seed kategori default saat registrasi** — FIXED: Menjalankan `DefaultCategoriesSeeder` (12 kategori global: 8 expense + 4 income). Validasi `category_id` di `TransactionController` juga diperketat — hanya menerima kategori global atau milik user sendiri.
+- [x] **[BUG-002] Migrate `middleware.js` → `proxy.js`** — FIXED: Renamed file dan fungsi dari `middleware` → `proxy` sesuai konvensi Next.js 16+. Deprecation warning sudah hilang dari startup log.
+- [x] **[BUG-003] Tambah notifikasi verifikasi WhatsApp di Dashboard** — FIXED: Menambahkan banner/reminder di bagian atas Dashboard (jika `phone_verified` false) yang mengarahkan user ke halaman `/settings` untuk memicu verifikasi WhatsApp OTP.
+- [x] **[BUG-004] WhatsApp Bridge Bad MAC Connection Status** — FIXED: Mendeteksi error dekripsi Bad MAC melalui console.error dan memaksa status bridge terlaporkan "Tidak Terhubung" agar user tahu sesi harus di-reconnect.
+- [x] **[BUG-005] Infinite Redirect Loop di Frontend** — FIXED: Menghapus redirect paksa dari api.js 401 response dan menyatukannya di AuthContext menggunakan router.replace (client-side routing) agar tidak memicu reload loop.
+- [x] **[BUG-006] Profil Kosong di Settings setelah Login/Register** — FIXED: Mengubah halaman login & register agar memanggil auth helper (`login`/`register`) dari `useAuth()` hook dan bukan client API langsung, sehingga data profil di AuthContext langsung tersinkronisasi global tanpa perlu manual refresh.
 
 ---
 

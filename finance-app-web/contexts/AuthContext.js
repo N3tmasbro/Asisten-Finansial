@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import api from '../lib/api';
 
 const AuthContext = createContext(null);
@@ -10,10 +11,23 @@ const AuthContext = createContext(null);
  *
  * Fetches user profile on mount (if token exists),
  * and exposes user data + auth helpers to all children.
+ *
+ * This is the SINGLE source of truth for handling expired/invalid tokens.
+ * When api.js detects a 401, it clears the token and throws — AuthContext
+ * catches it here and redirects to /login exactly once.
  */
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const hasFetched = useRef(false); // Guard: only fetch once on mount
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Protected routes that require authentication
+  const protectedRoutes = ['/dashboard', '/transactions', '/analytics', '/categories', '/wallets', '/budgets', '/settings'];
+  const isProtectedRoute = protectedRoutes.some(
+    (route) => pathname === route || pathname.startsWith(route + '/')
+  );
 
   const fetchUser = useCallback(async () => {
     const token = api.getToken();
@@ -27,7 +41,8 @@ export function AuthProvider({ children }) {
       const data = await api.getProfile();
       setUser(data.user || data);
     } catch (err) {
-      console.error('Failed to fetch user profile:', err);
+      // Token is invalid/expired — api.js already cleared it.
+      // Just update state; redirect is handled below via effect.
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -35,8 +50,18 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
     fetchUser();
   }, [fetchUser]);
+
+  // Redirect to /login if on a protected route with no user and loading is done
+  useEffect(() => {
+    if (isLoading) return;
+    if (!user && isProtectedRoute) {
+      router.replace('/login');
+    }
+  }, [isLoading, user, isProtectedRoute, router]);
 
   const login = async (email, password) => {
     const result = await api.login(email, password);
@@ -54,11 +79,11 @@ export function AuthProvider({ children }) {
     try {
       await api.logout();
     } catch (err) {
-      // Ignore, clear anyway
+      // Ignore API errors, clear anyway
     } finally {
       api.clearToken();
       setUser(null);
-      window.location.href = '/login';
+      router.replace('/login');
     }
   };
 
@@ -80,3 +105,4 @@ export function useAuth() {
   }
   return context;
 }
+

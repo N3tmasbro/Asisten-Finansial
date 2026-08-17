@@ -35,9 +35,15 @@ console.log = (...args) => {
     _log(...args);
     writeLog('INFO', ...args.map(String));
 };
+let hasBadMacError = false;
+
 console.error = (...args) => {
     _error(...args);
-    writeLog('ERROR', ...args.map(String));
+    const logStr = args.map(String).join(' ');
+    writeLog('ERROR', logStr);
+    if (logStr.includes('Bad MAC') || logStr.includes('Failed to decrypt message')) {
+        hasBadMacError = true;
+    }
 };
 console.warn = (...args) => {
     _warn(...args);
@@ -235,8 +241,9 @@ app.get('/status', (req, res) => {
     }
 
     res.json({
-        status: sock?.user ? 'connected' : 'disconnected',
+        status: (sock?.user && !hasBadMacError) ? 'connected' : 'disconnected',
         user: sock?.user || null,
+        error: hasBadMacError ? 'Terdeteksi Bad MAC (Sesi enkripsi WhatsApp rusak). Silakan hubungkan ulang.' : null,
     });
 });
 

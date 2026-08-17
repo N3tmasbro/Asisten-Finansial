@@ -1,21 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { formatRupiah, formatPercent } from '../../lib/utils';
 import api from '../../lib/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('this_month');
   const [transactions, setTransactions] = useState([]);
   const [wallets, setWallets] = useState([]);
   const [summary, setSummary] = useState(null);
 
+  const isFetching = useRef(false);
+
   useEffect(() => {
     fetchData();
   }, [period]);
 
   async function fetchData() {
+    if (isFetching.current) return;
+    isFetching.current = true;
     setLoading(true);
     try {
       const [txRes, walletRes, summaryRes] = await Promise.allSettled([
@@ -39,6 +45,7 @@ export default function DashboardPage() {
       console.error('Dashboard fetch error:', err);
     } finally {
       setLoading(false);
+      isFetching.current = false;
     }
   }
 
@@ -46,6 +53,8 @@ export default function DashboardPage() {
   const totalExpense = summary?.total_expense ?? transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const totalIncome = summary?.total_income ?? transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const reviewCount = transactions.filter(t => !t.is_reviewed).length;
+
+  const phoneVerified = user?.phone_verified || user?.is_phone_verified || false;
 
   // Build category breakdown from transactions if summary doesn't have it
   const categoryBreakdown = summary?.by_category || (() => {
@@ -96,6 +105,26 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* WhatsApp Verification Warning Banner */}
+      {user && !phoneVerified && (
+        <div className="mb-8 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 flex flex-col sm:flex-row items-center gap-4 animate-slide-up">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🔐</span>
+            <div>
+              <p className="text-sm font-semibold text-amber-400">
+                WhatsApp Belum Terverifikasi
+              </p>
+              <p className="text-xs text-gray-400">
+                Hubungkan nomor WhatsApp kamu agar bot dapat mengenali pesanmu dan mencatat transaksi secara otomatis.
+              </p>
+            </div>
+          </div>
+          <a href="/settings" className="sm:ml-auto btn-primary py-2 px-4 text-xs font-semibold no-underline whitespace-nowrap">
+            Verifikasi Sekarang →
+          </a>
+        </div>
+      )}
 
       {/* Onboarding Card — shown when no data yet */}
       {!loading && wallets.length === 0 && transactions.length === 0 && (

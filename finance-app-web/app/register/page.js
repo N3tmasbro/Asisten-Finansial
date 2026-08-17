@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import api from '../../lib/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { register } = useAuth();
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -29,7 +30,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      await api.register(form);
+      await register(form);
       router.push('/dashboard');
     } catch (err) {
       setError(err.message || 'Registrasi gagal. Coba lagi.');

@@ -71,22 +71,37 @@ class TransactionController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $user = $request->user();
+
         $validated = $request->validate([
-            'wallet_id' => 'required|exists:wallets,id',
-            'category_id' => 'required|exists:categories,id',
-            'type' => 'required|in:expense,income',
-            'amount' => 'required|integer|min:1',
-            'description' => 'nullable|string|max:255',
+            'wallet_id'        => 'required|exists:wallets,id',
+            'category_id'      => [
+                'required',
+                'integer',
+                // Only allow global default categories or categories owned by this user
+                function ($attribute, $value, $fail) use ($user) {
+                    $exists = \App\Models\Category::where('id', $value)
+                        ->where(function ($q) use ($user) {
+                            $q->whereNull('user_id')      // global defaults
+                              ->orWhere('user_id', $user->id); // user's own
+                        })
+                        ->exists();
+                    if (!$exists) {
+                        $fail('Kategori tidak valid atau tidak dapat diakses.');
+                    }
+                },
+            ],
+            'type'             => 'required|in:expense,income',
+            'amount'           => 'required|integer|min:1',
+            'description'      => 'nullable|string|max:255',
             'transaction_date' => 'required|date',
         ]);
-
-        $user = $request->user();
 
         // Verify wallet belongs to user
         $wallet = $user->wallets()->findOrFail($validated['wallet_id']);
 
         $transaction = Transaction::create(array_merge($validated, [
-            'user_id' => $user->id,
+            'user_id'     => $user->id,
             'is_reviewed' => true,
         ]));
 
@@ -97,7 +112,7 @@ class TransactionController extends Controller
         $transaction->load(['category', 'wallet']);
 
         return response()->json([
-            'message' => 'Transaksi berhasil ditambahkan.',
+            'message'     => 'Transaksi berhasil ditambahkan.',
             'transaction' => $transaction,
         ], 201);
     }
@@ -111,20 +126,35 @@ class TransactionController extends Controller
         $transaction = Transaction::where('user_id', $user->id)->findOrFail($id);
 
         $validated = $request->validate([
-            'wallet_id' => 'sometimes|exists:wallets,id',
-            'category_id' => 'sometimes|exists:categories,id',
-            'type' => 'sometimes|in:expense,income',
-            'amount' => 'sometimes|integer|min:1',
-            'description' => 'nullable|string|max:255',
+            'wallet_id'        => 'sometimes|exists:wallets,id',
+            'category_id'      => [
+                'sometimes',
+                'integer',
+                // Only allow global default categories or categories owned by this user
+                function ($attribute, $value, $fail) use ($user) {
+                    $exists = \App\Models\Category::where('id', $value)
+                        ->where(function ($q) use ($user) {
+                            $q->whereNull('user_id')
+                              ->orWhere('user_id', $user->id);
+                        })
+                        ->exists();
+                    if (!$exists) {
+                        $fail('Kategori tidak valid atau tidak dapat diakses.');
+                    }
+                },
+            ],
+            'type'             => 'sometimes|in:expense,income',
+            'amount'           => 'sometimes|integer|min:1',
+            'description'      => 'nullable|string|max:255',
             'transaction_date' => 'sometimes|date',
-            'is_reviewed' => 'sometimes|boolean',
+            'is_reviewed'      => 'sometimes|boolean',
         ]);
 
         $transaction = $this->transactionService->update($transaction, $validated);
         $transaction->load(['category', 'wallet']);
 
         return response()->json([
-            'message' => 'Transaksi berhasil diperbarui.',
+            'message'     => 'Transaksi berhasil diperbarui.',
             'transaction' => $transaction,
         ]);
     }

@@ -1,6 +1,15 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  // If user has an auth token cookie, redirect straight to dashboard
+  const cookieStore = await cookies();
+  const token = cookieStore.get('auth_token')?.value;
+  if (token) {
+    redirect('/dashboard');
+  }
+
   return (
     <div className="min-h-screen" style={{ background: 'var(--color-bg-primary)' }}>
       {/* Navbar */}
