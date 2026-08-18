@@ -61,7 +61,7 @@ sudo mysql
 Jalankan perintah SQL berikut:
 ```sql
 CREATE DATABASE keuangan_db;
-CREATE USER 'keuangan_user'@'localhost' IDENTIFIED BY 'PasswordKuatAnda123!';
+CREATE USER 'keuangan_user'@'localhost' IDENTIFIED BY 'randompasswd';
 GRANT ALL PRIVILEGES ON keuangan_db.* TO 'keuangan_user'@'localhost';
 FLUSH PRIVILEGES;
 EXIT;
@@ -108,7 +108,7 @@ git clone https://github.com/N3tmasbro/Asisten-Finansial.git /var/www/keuangan
    DB_PORT=3306
    DB_DATABASE=keuangan_db
    DB_USERNAME=keuangan_user
-   DB_PASSWORD=PasswordKuatAnda123!
+   DB_PASSWORD=randompasswd
 
    WA_BRIDGE_URL=http://localhost:3001
    WA_BRIDGE_SECRET=SecretTokenKeamananAnda123!
