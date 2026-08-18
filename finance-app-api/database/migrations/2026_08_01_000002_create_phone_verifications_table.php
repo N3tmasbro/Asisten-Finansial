@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('phone_number');
             $table->string('otp_code', 6);
             $table->timestamp('verified_at')->nullable();
-            $table->timestamp('expires_at');
+            $table->timestamp('expires_at')->useCurrent();
             $table->timestamps();
 
             $table->index(['phone_number', 'otp_code']);

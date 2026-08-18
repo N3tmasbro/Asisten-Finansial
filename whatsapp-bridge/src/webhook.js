@@ -16,6 +16,7 @@ async function forwardToLaravel(payload) {
         headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
+            'Host': 'api.savings.marridho.tech',
         },
         body: JSON.stringify(body),
     });

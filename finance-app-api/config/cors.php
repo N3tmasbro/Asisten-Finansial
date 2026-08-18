@@ -19,7 +19,11 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [env('FRONTEND_URL', 'http://localhost:3000')],
+    'allowed_origins' => [
+        env('FRONTEND_URL', 'http://localhost:3000'),
+        'https://savings.marridho.tech',
+        'http://savings.marridho.tech',
+    ],
 
     'allowed_origins_patterns' => [],
 

@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const fs = require('fs');
 const path = require('path');
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, decryptPollVote } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, decryptPollVote, Browsers } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const { Boom } = require('@hapi/boom');
 const qrcode = require('qrcode-terminal');
@@ -67,7 +67,7 @@ async function connectToWhatsApp() {
         auth: state,
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        browser: ['Asisten Finansial AI', 'Chrome', '120.0.0'],
+        browser: Browsers.ubuntu('Chrome'),
     });
 
     // Handle connection updates
