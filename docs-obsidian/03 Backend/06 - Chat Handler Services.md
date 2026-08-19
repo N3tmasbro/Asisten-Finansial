@@ -129,13 +129,19 @@ Membuat atau mengubah entitas master (wallet, kategori, budget).
 | Action | Contoh pesan |
 |---|---|
 | `create_wallet` | "buat wallet Dana", "tambah dompet GoPay" |
+| `create_wallet_with_balance` | "buat wallet BCA dengan saldo 5jt" |
 | `rename_wallet` | "rename wallet BCA jadi BCA Digital" |
+| `delete_wallet` | "hapus wallet pegangan", "delete wallet BCA" |
+| `set_wallet_balance` | "saldo cash 1jt", "cash ge 1jt", "set BCA 3jt" |
+| `set_multiple_wallet_balances` | "cash 1jt, BCA 3jt", "cash 1jt sisanya BCA 3jt" |
 | `create_category` | "buat kategori Investasi" |
 | `rename_category` | "ganti nama kategori Transport jadi Transportasi" |
 | `create_budget` | "buat budget makan 2 juta" |
+| `create_multiple_budgets` | "buat budget utk Konsumsi 800rb\nUtk bensin 200rb" |
 | `update_budget` | "budget makan naikkan jadi 2,5 juta" |
+| `delete_budget` | "hapus budget makan" |
 
-**Jika entitas sudah ada:** tampilkan pesan informatif (tidak error).
+**Jika entitas sudah ada:** tampilkan pesan informatif (atau update saldo/budget).
 **Tipe wallet otomatis dideteksi:** nama mengandung "GoPay/OVO/Dana/DANA/ShopeePay" → `ewallet`, "BCA/BRI/Mandiri/BNI" → `bank`, lainnya → `cash`.
 
 ---
