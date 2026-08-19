@@ -168,7 +168,13 @@ Intent yang tersedia:
 - "delete_transaction": user ingin MENGHAPUS transaksi yang sudah ada (contoh: "hapus yang bensin tadi", "delete transaksi terakhir", "batalkan yang kopi", "hilangkan transaksi bensin")
 - "inspect_records": user ingin MELIHAT data yang ada tanpa mengubah apapun (contoh: "saldo BCA berapa?", "saldo semua wallet", "transaksi terakhir apa?", "daftar wallet", "daftar kategori", "budget makan bulan ini?", "riwayat transaksi", "cek saldo")
 - "savings_advice": user ingin saran penghematan atau tips hemat keuangan (contoh: "kasih saran dong", "di mana bisa aku hemat?", "tips hemat", "gimana caranya aku bisa nabung?", "pengeluaranku boros di mana?")
-- "manage_records": user ingin MEMBUAT atau MENGUBAH wallet/kategori/budget (contoh: "buat wallet Dana", "tambah kategori Investasi", "buat budget makan 2 juta", "rename wallet BCA jadi BCA Digital", "naikkan budget makan jadi 2,5 juta")
+- "manage_records": user ingin MEMBUAT, MENGUBAH, atau MENGATUR wallet/kategori/budget/saldo.
+  Contoh klasik: "buat wallet Dana", "tambah kategori Investasi", "buat budget makan 2 juta", "rename wallet BCA jadi BCA Digital", "naikkan budget makan jadi 2,5 juta"
+  Contoh SET SALDO wallet (PENTING — ini MANAGE bukan add_transaction):
+  - "cash gw 1jt" / "saldo cash 1jt" / "set cash jadi 1 juta" → set saldo wallet Cash
+  - "BCA 3jt" / "wallet BCA 3 juta" / "saldo BCA sekarang 3jt" → set saldo wallet BCA
+  - "cash 1jt, BCA 3jt" / "cash 1jt sisanya di BCA" / "1jt di cash 3jt di BCA" → set saldo multi-wallet
+  - "buat wallet BCA dengan saldo 5jt" / "tambah wallet Dana isi 2jt" → buat wallet + set saldo awal
 - "greeting_smalltalk": sapaan atau obrolan ringan (contoh: "halo", "terima kasih", "siapa kamu?")
 - "unclear": pesan tidak jelas atau tidak terkait keuangan
 
@@ -178,13 +184,21 @@ ATURAN PENTING — baca ini dengan seksama:
 3. Jika pesan mengandung "buat", "tambah", "rename", "naikkan", "turunkan" untuk wallet/kategori/budget = MANAGE
 4. Jika pesan mengandung "hapus", "delete", "hilangkan" untuk transaksi = DELETE
 5. add_transaction HANYA untuk transaksi yang benar-benar BARU, bukan referensi ke transaksi lama
+6. Jika pesan menyebut NAMA WALLET + NOMINAL tanpa kata kerja transaksi = MANAGE (set saldo)
+   - "cash 1jt" tanpa konteks belanja = MANAGE
+   - "BCA 5jt" = MANAGE
+   - "cash 1jt, BCA 3jt" = MANAGE
+7. Bahasa gaul yang umum: "gw"=saya, "ge"=saya, "lo"=kamu, "doang"=hanya, "sementara"=sedangkan, "sisanya"=sisa
 
 CONTOH NEGATIF (jangan salah klasifikasi):
 - "yang kopi tadi harusnya Hiburan" → BUKAN add_transaction, ini CORRECTION
-- "yang bensin salah, harusnya 80rb" → BUKAN add_transaction, ini CORRECTION  
+- "yang bensin salah, harusnya 80rb" → BUKAN add_transaction, ini CORRECTION
 - "saldo semua wallet" → BUKAN query_report, ini INSPECT
 - "daftar wallet" → BUKAN unclear, ini INSPECT
 - "hapus yang bensin tadi" → BUKAN correction, ini DELETE
+- "cash gw 1jt" → BUKAN add_transaction, ini MANAGE (set saldo wallet)
+- "BCA 3jt" → BUKAN add_transaction, ini MANAGE (set saldo wallet)
+- "cash 1jt sisanya BCA" → BUKAN add_transaction, ini MANAGE (set saldo multi-wallet)
 PROMPT;
 
         $data = $this->callGeminiStructured($systemPrompt, $message, $this->intentSchema());
@@ -267,26 +281,47 @@ ATURAN KETAT:
 1. JANGAN pernah mengarang transaction_id, wallet_id, atau category_id
 2. Untuk target transaksi, gunakan deskripsi/jumlah/tanggal yang disebut user
 3. Untuk wallet/category, gunakan NAMA yang disebut user (backend yang resolve ke ID)
-4. Konversi angka: "20rb"/"20ribu"/"20k" = 20000, "1,5jt"/"1.5juta" = 1500000
+4. Konversi angka: "20rb"/"20ribu"/"20k" = 20000, "1,5jt"/"1.5juta" = 1500000, "ge 1jt"=1000000
 5. Jika user tidak menyebut tanggal, jangan isi date
 6. Jika user tidak menyebut wallet, jangan isi wallet
 7. Confidence: 0.0-1.0 berdasar kejelasan pesan user
+8. Bahasa gaul: "gw"=saya, "ge"=saya, "doang"=hanya, "sisanya"=sisa, "sementara"=sedangkan
 
 ACTIONS yang tersedia:
 - update_transaction: koreksi transaksi yang sudah ada
 - delete_transaction: hapus transaksi
-- create_wallet: buat wallet baru
+- create_wallet: buat wallet baru (tanpa saldo awal)
+- create_wallet_with_balance: buat wallet baru SEKALIGUS set saldo awal
 - rename_wallet: ubah nama wallet
+- delete_wallet: hapus wallet yang ada
+- set_wallet_balance: ubah/set saldo wallet yang sudah ada ke nilai tertentu
+- set_multiple_wallet_balances: set saldo beberapa wallet sekaligus
 - create_category: buat kategori baru
 - rename_category: ubah nama kategori
-- create_budget: buat budget baru
+- create_budget: buat SATU budget baru
+- create_multiple_budgets: buat BEBERAPA budget sekaligus dalam satu pesan
 - update_budget: ubah jumlah budget
 - delete_budget: hapus budget
 
 FORMAT OUTPUT (JSON ketat):
-{"action":"...","target":{"description":null,"amount":null,"category":null,"wallet":null,"date":null},"changes":{"amount":null,"category":null,"wallet":null,"description":null,"date":null,"type":null},"data":{"name":null,"type":null,"amount":null,"category":null,"period":null,"old_name":null,"new_name":null},"confidence":0.0}
+{"action":"...","target":{"description":null,"amount":null,"category":null,"wallet":null,"date":null},"changes":{"amount":null,"category":null,"wallet":null,"description":null,"date":null,"type":null},"data":{"name":null,"type":null,"amount":null,"category":null,"period":null,"old_name":null,"new_name":null,"wallets":null,"budgets":null},"confidence":0.0}
 
 Isi HANYA field yang relevan. Sisanya null.
+
+KATEGORI YANG ADA DI SISTEM (gunakan nama yang paling sesuai):
+- Makan & Minum: konsumsi, makan, minum, ngopi, kopi, resto, warung, nasgor, soto
+- Transport: bensin, transport, ojek, grab, gojek, parkir, tol, bbm, bahan bakar
+- Belanja: belanja, beli, shop, toko, supermarket
+- Hiburan: hiburan, game, nonton, bioskop, streaming, netflix, spotify
+- Kesehatan: obat, dokter, rs, kesehatan, apotek
+- Pendidikan: sekolah, kuliah, kursus, buku, pendidikan
+- Tagihan: tagihan, listrik, air, wifi, internet, pulsa, token
+- Lainnya: lainnya, lain, misc
+- Gaji: gaji, gajian, salary
+- Bonus/THR: bonus, thr, reward
+- Freelance/Sampingan: freelance, project, sampingan, bisnis
+
+Singkatan/slang umum: "utk"=untuk, "utk bensin"=Transport, "konsumsi"=Makan & Minum, "utk makan"=Makan & Minum
 
 CONTOH:
 
@@ -302,8 +337,29 @@ User: "hapus transaksi makan tadi"
 User: "buat wallet Dana"
 {"action":"create_wallet","target":null,"changes":null,"data":{"name":"Dana"},"confidence":0.95}
 
+User: "hapus wallet pegangan" / "delete wallet BCA"
+{"action":"delete_wallet","target":null,"changes":null,"data":{"name":"pegangan"},"confidence":0.95}
+
+User: "buat wallet BCA dengan saldo 5jt"
+{"action":"create_wallet_with_balance","target":null,"changes":null,"data":{"name":"BCA","amount":5000000},"confidence":0.95}
+
+User: "saldo cash gw 1jt" / "cash ge 1jt" / "set cash jadi 1 juta"
+{"action":"set_wallet_balance","target":null,"changes":null,"data":{"name":"Cash","amount":1000000},"confidence":0.9}
+
+User: "BCA 3jt" / "saldo BCA sekarang 3jt" / "wallet BCA 3 juta"
+{"action":"set_wallet_balance","target":null,"changes":null,"data":{"name":"BCA","amount":3000000},"confidence":0.85}
+
+User: "cash 1jt sisanya di BCA 3jt" / "cash 1jt, BCA 3jt" / "1jt di cash 3jt di BCA"
+{"action":"set_multiple_wallet_balances","target":null,"changes":null,"data":{"wallets":[{"name":"Cash","amount":1000000},{"name":"BCA","amount":3000000}]},"confidence":0.9}
+
+User: "buat agar cash ge 1jt doang sementara tambah wallet BCA 3jt"
+{"action":"set_multiple_wallet_balances","target":null,"changes":null,"data":{"wallets":[{"name":"Cash","amount":1000000},{"name":"BCA","amount":3000000}]},"confidence":0.85}
+
 User: "buat budget makan 2 juta bulan ini"
 {"action":"create_budget","target":null,"changes":null,"data":{"category":"Makan & Minum","amount":2000000,"period":"monthly"},"confidence":0.9}
+
+User: "buat budget utk Konsumsi 800rb\nUtk bensin 200rb" / "budget makan 800rb sama transport 200rb"
+{"action":"create_multiple_budgets","target":null,"changes":null,"data":{"budgets":[{"category":"Makan & Minum","amount":800000,"period":"monthly"},{"category":"Transport","amount":200000,"period":"monthly"}]},"confidence":0.9}
 
 Jangan tambahkan penjelasan apapun di luar JSON.
 PROMPT;
