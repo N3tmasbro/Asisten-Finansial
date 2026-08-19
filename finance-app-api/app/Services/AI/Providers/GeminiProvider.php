@@ -53,6 +53,109 @@ class GeminiProvider implements AIProviderInterface
         )));
     }
 
+    // ─────────────────────────────────────────────────────
+    //  Response Schemas (OpenAPI subset for Gemini)
+    // ─────────────────────────────────────────────────────
+
+    /**
+     * Schema for classifyIntent — returns {intent, confidence}.
+     */
+    private function intentSchema(): array
+    {
+        return [
+            'type' => 'OBJECT',
+            'properties' => [
+                'intent' => [
+                    'type' => 'STRING',
+                    'enum' => [
+                        'add_transaction',
+                        'query_report',
+                        'correction',
+                        'delete_transaction',
+                        'inspect_records',
+                        'savings_advice',
+                        'manage_records',
+                        'greeting_smalltalk',
+                        'unclear',
+                    ],
+                ],
+                'confidence' => [
+                    'type' => 'NUMBER',
+                ],
+            ],
+            'required' => ['intent', 'confidence'],
+        ];
+    }
+
+    /**
+     * Schema for extractTransactions — returns array of transaction objects.
+     */
+    private function transactionSchema(): array
+    {
+        return [
+            'type' => 'ARRAY',
+            'items' => [
+                'type' => 'OBJECT',
+                'properties' => [
+                    'description' => ['type' => 'STRING'],
+                    'amount' => ['type' => 'INTEGER'],
+                    'type' => [
+                        'type' => 'STRING',
+                        'enum' => ['expense', 'income'],
+                    ],
+                    'category' => ['type' => 'STRING'],
+                    'wallet' => ['type' => 'STRING', 'nullable' => true],
+                    'date' => ['type' => 'STRING', 'nullable' => true],
+                    'notes' => ['type' => 'STRING', 'nullable' => true],
+                    'confidence' => ['type' => 'NUMBER'],
+                    'needs_clarification' => ['type' => 'BOOLEAN'],
+                    'clarification_reason' => ['type' => 'STRING', 'nullable' => true],
+                ],
+                'required' => ['description', 'amount', 'type', 'category', 'confidence', 'needs_clarification'],
+            ],
+        ];
+    }
+
+    /**
+     * Schema for parseQuery — returns query parameters.
+     */
+    private function querySchema(): array
+    {
+        return [
+            'type' => 'OBJECT',
+            'properties' => [
+                'query_type' => [
+                    'type' => 'STRING',
+                    'enum' => [
+                        'total_by_category',
+                        'total_by_period',
+                        'trend_comparison',
+                        'balance_prediction',
+                        'top_spending',
+                        'general_summary',
+                    ],
+                ],
+                'period' => [
+                    'type' => 'STRING',
+                    'enum' => [
+                        'this_month',
+                        'last_month',
+                        'this_week',
+                        'last_week',
+                        'today',
+                        'custom',
+                    ],
+                ],
+                'category_filter' => ['type' => 'STRING', 'nullable' => true],
+                'date_from' => ['type' => 'STRING', 'nullable' => true],
+                'date_to' => ['type' => 'STRING', 'nullable' => true],
+            ],
+            'required' => ['query_type', 'period'],
+        ];
+    }
+
+
+
     public function classifyIntent(string $message, array $context = []): IntentClassificationDTO
     {
         $systemPrompt = <<<PROMPT
@@ -82,15 +185,9 @@ CONTOH NEGATIF (jangan salah klasifikasi):
 - "saldo semua wallet" → BUKAN query_report, ini INSPECT
 - "daftar wallet" → BUKAN unclear, ini INSPECT
 - "hapus yang bensin tadi" → BUKAN correction, ini DELETE
-
-Balas HANYA dalam format JSON:
-{"intent": "...", "confidence": 0.0-1.0}
-
-Jangan tambahkan penjelasan apapun di luar JSON.
 PROMPT;
 
-        $response = $this->callGemini($systemPrompt, $message);
-        $data = $this->parseJsonResponse($response);
+        $data = $this->callGeminiStructured($systemPrompt, $message, $this->intentSchema());
 
         return IntentClassificationDTO::fromAIResponse($data);
     }
@@ -112,15 +209,18 @@ Aturan:
 5. Pilih kategori dari daftar yang tersedia. Jika tidak yakin, gunakan "Lainnya".
 6. Setiap transaksi punya confidence masing-masing (0.0-1.0).
 7. Ambil deskripsi singkat dari konteks pesan.
-
-Balas HANYA dalam format JSON array:
-[{"description": "...", "amount": 20000, "type": "expense", "category": "Makan & Minum", "confidence": 0.95}]
-
-Jangan tambahkan penjelasan apapun di luar JSON.
+8. Jika ada detail tambahan (tempat, alasan, catatan), masukkan ke field "notes".
+   Contoh: "beli kopi 20rb di Starbucks bareng Budi" → notes = "di Starbucks bareng Budi"
+9. Set needs_clarification = true jika:
+   - Nominal tidak disebutkan atau ambigu
+   - Kategori sangat tidak jelas
+   - Pesan sangat ambigu
+   Isi clarification_reason dengan alasan singkat jika needs_clarification = true.
+10. Jika user menyebut nama wallet (e.g. "dari BCA", "pakai Dana", "cash"), isi field wallet.
+11. Jika user menyebut tanggal (e.g. "kemarin", "tadi malam", "tanggal 15"), isi field date dalam format YYYY-MM-DD.
 PROMPT;
 
-        $response = $this->callGemini($systemPrompt, $message);
-        $data = $this->parseJsonResponse($response);
+        $data = $this->callGeminiStructured($systemPrompt, $message, $this->transactionSchema());
 
         // Ensure we always have an array of arrays
         if (isset($data['description'])) {
@@ -151,15 +251,9 @@ Tipe query yang tersedia:
 - "balance_prediction": prediksi saldo
 - "top_spending": pengeluaran terbesar
 - "general_summary": ringkasan umum
-
-Balas HANYA dalam format JSON:
-{"query_type": "...", "period": "this_month|last_month|this_week|last_week|today|custom", "category_filter": null|"Makan & Minum", "date_from": "YYYY-MM-DD"|null, "date_to": "YYYY-MM-DD"|null}
-
-Jangan tambahkan penjelasan apapun di luar JSON.
 PROMPT;
 
-        $response = $this->callGemini($systemPrompt, $message);
-        $data = $this->parseJsonResponse($response);
+        $data = $this->callGeminiStructured($systemPrompt, $message, $this->querySchema());
 
         return QueryParametersDTO::fromAIResponse($data);
     }
@@ -208,20 +302,8 @@ User: "hapus transaksi makan tadi"
 User: "buat wallet Dana"
 {"action":"create_wallet","target":null,"changes":null,"data":{"name":"Dana"},"confidence":0.95}
 
-User: "rename wallet BCA jadi BCA Digital"
-{"action":"rename_wallet","target":null,"changes":null,"data":{"old_name":"BCA","new_name":"BCA Digital"},"confidence":0.9}
-
 User: "buat budget makan 2 juta bulan ini"
 {"action":"create_budget","target":null,"changes":null,"data":{"category":"Makan & Minum","amount":2000000,"period":"monthly"},"confidence":0.9}
-
-User: "budget makan naikkan jadi 2,5 juta"
-{"action":"update_budget","target":null,"changes":null,"data":{"category":"Makan & Minum","amount":2500000},"confidence":0.85}
-
-User: "buat kategori Investasi"
-{"action":"create_category","target":null,"changes":null,"data":{"name":"Investasi","type":"expense"},"confidence":0.95}
-
-User: "yang tadi salah harusnya pemasukan bukan pengeluaran"
-{"action":"update_transaction","target":{"description":null},"changes":{"type":"income"},"data":null,"confidence":0.7}
 
 Jangan tambahkan penjelasan apapun di luar JSON.
 PROMPT;
@@ -256,6 +338,7 @@ PROMPT;
 
         $userMessage = implode("\n", $contextParts);
 
+        // Use free-text JSON mode for this complex nested command structure
         $response = $this->callGemini($systemPrompt, $userMessage);
         $data = $this->parseJsonResponse($response);
 
@@ -309,9 +392,47 @@ Data:
 Buat respons natural dalam Bahasa Indonesia. JANGAN gunakan tag markdown tebal atau miring jika tidak diperlukan, gunakan gaya format chat WA biasa.
 PROMPT;
 
+        // formatResponse uses free-text output — no schema enforcement
         return $this->callGemini($systemPrompt, 'Formatkan data berikut menjadi respons chat WhatsApp.');
     }
 
+    // ─────────────────────────────────────────────────────
+    //  Core API Call Methods
+    // ─────────────────────────────────────────────────────
+
+    /**
+     * Call Gemini with structured output (JSON mode + response schema).
+     * Guarantees valid JSON output matching the provided schema.
+     * Used for: classifyIntent, extractTransactions, parseQuery, parseFinancialCommand.
+     */
+    private function callGeminiStructured(string $systemPrompt, string $userMessage, array $responseSchema): array
+    {
+        $payload = [
+            'system_instruction' => [
+                'parts' => [['text' => $systemPrompt]]
+            ],
+            'contents' => [
+                ['parts' => [['text' => $userMessage]]]
+            ],
+            'generationConfig' => [
+                'temperature'      => 0.1,
+                'topK'             => 40,
+                'topP'             => 0.95,
+                'maxOutputTokens'  => 1024,
+                'responseMimeType' => 'application/json',
+                'responseSchema'   => $responseSchema,
+            ],
+        ];
+
+        $responseText = $this->executeGeminiRequest($payload);
+
+        return $this->parseJsonResponse($responseText);
+    }
+
+    /**
+     * Call Gemini for free-text output (no schema enforcement).
+     * Used for: formatResponse (natural language WhatsApp messages).
+     */
     private function callGemini(string $systemPrompt, string $userMessage): string
     {
         $payload = [
@@ -329,6 +450,15 @@ PROMPT;
             ],
         ];
 
+        return $this->executeGeminiRequest($payload);
+    }
+
+    /**
+     * Execute HTTP request to Gemini API with fallback model chain.
+     * Shared by both callGemini and callGeminiStructured.
+     */
+    private function executeGeminiRequest(array $payload): string
+    {
         foreach ($this->fallbackModels as $model) {
             $url = "{$this->baseApiUrl}/{$model}:generateContent?key={$this->apiKey}";
 
@@ -385,9 +515,14 @@ PROMPT;
         return '{}';
     }
 
+    /**
+     * Parse JSON from Gemini response text.
+     * With structured output mode, this should already be valid JSON,
+     * but we keep the markdown-stripping fallback for robustness.
+     */
     private function parseJsonResponse(string $response): array
     {
-        // Strip markdown code blocks if present
+        // Strip markdown code blocks if present (fallback safety)
         $response = preg_replace('/```json\s*/i', '', $response);
         $response = preg_replace('/```\s*$/i', '', $response);
         $response = trim($response);

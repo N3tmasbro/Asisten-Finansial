@@ -50,6 +50,7 @@ Daftar hal yang **belum selesai** atau **perlu didiskusikan** lebih lanjut.
 - [x] Frontend halaman dasar (login, register, dashboard, transactions, settings)
 - [x] **`CorrectionHandlerService` & `DeleteHandlerService`** + algoritma pencarian `CandidateResolverService` + konfirmasi
 - [x] **Detail webhook payload contract** antara WA Bridge dan Laravel
+- [x] **Gemini Structured Output Refactor** — Migrasi `GeminiProvider` dari prompt-based JSON parsing (regex stripping) ke native `responseMimeType: application/json` + `responseSchema` untuk `classifyIntent`, `extractTransactions`, dan `parseQuery`. Menambah field baru: `notes`, `needs_clarification`, `clarification_reason` pada `ParsedTransactionDTO` dan kolom `notes` pada tabel `transactions`. `ClaudeProvider` juga diupdate untuk paritas prompt.
 
 ---
 

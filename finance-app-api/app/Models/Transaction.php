@@ -20,6 +20,7 @@ class Transaction extends Model
         'type',
         'amount',
         'description',
+        'notes',
         'raw_input',
         'transaction_date',
         'ai_confidence',

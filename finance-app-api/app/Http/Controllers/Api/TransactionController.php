@@ -55,6 +55,7 @@ class TransactionController extends Controller
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('description', 'LIKE', "%{$search}%")
+                    ->orWhere('notes', 'LIKE', "%{$search}%")
                     ->orWhere('raw_input', 'LIKE', "%{$search}%");
             });
         }
@@ -94,6 +95,7 @@ class TransactionController extends Controller
             'type'             => 'required|in:expense,income',
             'amount'           => 'required|integer|min:1',
             'description'      => 'nullable|string|max:255',
+            'notes'            => 'nullable|string|max:1000',
             'transaction_date' => 'required|date',
         ]);
 
@@ -146,6 +148,7 @@ class TransactionController extends Controller
             'type'             => 'sometimes|in:expense,income',
             'amount'           => 'sometimes|integer|min:1',
             'description'      => 'nullable|string|max:255',
+            'notes'            => 'nullable|string|max:1000',
             'transaction_date' => 'sometimes|date',
             'is_reviewed'      => 'sometimes|boolean',
         ]);

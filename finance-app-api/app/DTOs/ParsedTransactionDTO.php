@@ -14,6 +14,9 @@ class ParsedTransactionDTO
         public readonly float $confidence,
         public readonly ?string $walletName = null,
         public readonly ?string $transactionDate = null,
+        public readonly ?string $notes = null,
+        public readonly bool $needsClarification = false,
+        public readonly ?string $clarificationReason = null,
     ) {}
 
     public static function fromAIResponse(array $data): self
@@ -26,6 +29,9 @@ class ParsedTransactionDTO
             confidence: (float) ($data['confidence'] ?? 0.0),
             walletName: $data['wallet'] ?? null,
             transactionDate: $data['date'] ?? null,
+            notes: $data['notes'] ?? null,
+            needsClarification: (bool) ($data['needs_clarification'] ?? false),
+            clarificationReason: $data['clarification_reason'] ?? null,
         );
     }
 
@@ -44,6 +50,9 @@ class ParsedTransactionDTO
             'confidence' => $this->confidence,
             'wallet_name' => $this->walletName,
             'transaction_date' => $this->transactionDate,
+            'notes' => $this->notes,
+            'needs_clarification' => $this->needsClarification,
+            'clarification_reason' => $this->clarificationReason,
         ];
     }
 }

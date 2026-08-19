@@ -66,9 +66,13 @@ Aturan:
 5. Pilih kategori dari daftar yang tersedia. Jika tidak yakin, gunakan "Lainnya".
 6. Setiap transaksi punya confidence masing-masing (0.0-1.0).
 7. Ambil deskripsi singkat dari konteks pesan.
+8. Jika ada detail tambahan (tempat, alasan, catatan), masukkan ke field "notes".
+   Contoh: "beli kopi 20rb di Starbucks bareng Budi" → notes = "di Starbucks bareng Budi"
+9. Set needs_clarification = true jika nominal tidak disebutkan, kategori sangat tidak jelas, atau pesan ambigu.
+   Isi clarification_reason dengan alasan singkat jika needs_clarification = true.
 
 Balas HANYA dalam format JSON array:
-[{"description": "...", "amount": 20000, "type": "expense", "category": "Makan & Minum", "confidence": 0.95}]
+[{"description": "...", "amount": 20000, "type": "expense", "category": "Makan & Minum", "wallet": null, "date": null, "notes": null, "confidence": 0.95, "needs_clarification": false, "clarification_reason": null}]
 
 Jangan tambahkan penjelasan apapun di luar JSON.
 PROMPT;

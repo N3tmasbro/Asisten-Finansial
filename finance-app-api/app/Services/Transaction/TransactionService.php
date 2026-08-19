@@ -47,6 +47,7 @@ class TransactionService
                     'type' => $parsed->type,
                     'amount' => $parsed->amount,
                     'description' => $parsed->description,
+                    'notes' => $parsed->notes,
                     'raw_input' => $chatMessage?->body,
                     'transaction_date' => $parsed->transactionDate ?? now()->toDateString(),
                     'ai_confidence' => $parsed->confidence,
