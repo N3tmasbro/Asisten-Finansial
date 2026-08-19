@@ -18,6 +18,9 @@ export default function TransactionsPage() {
   const [sortKey, setSortKey] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(15);
+
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(null);
@@ -35,6 +38,10 @@ export default function TransactionsPage() {
   useEffect(() => {
     fetchAll();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, categoryFilter, walletFilter, periodFilter, searchQuery, dateFrom, dateTo]);
 
   async function fetchAll() {
     setLoading(true);
@@ -187,6 +194,10 @@ export default function TransactionsPage() {
     if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
     return 0;
   });
+
+  const totalItems = sorted.length;
+  const totalPages = Math.ceil(totalItems / perPage) || 1;
+  const paginated = sorted.slice((currentPage - 1) * perPage, currentPage * perPage);
 
   if (loading) {
     return (
@@ -402,7 +413,7 @@ export default function TransactionsPage() {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((tx) => (
+            {paginated.map((tx) => (
               <tr key={tx.id} className="border-t border-white/[0.04] hover:bg-white/[0.02] transition-all duration-150">
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
@@ -459,6 +470,62 @@ export default function TransactionsPage() {
         {sorted.length === 0 && (
           <div className="py-12 text-center">
             <p className="text-gray-400">{transactions.length === 0 ? 'Belum ada transaksi. Kirim pesan ke WhatsApp untuk mulai!' : 'Tidak ada transaksi ditemukan.'}</p>
+          </div>
+        )}
+
+        {/* Pagination Footer Controls */}
+        {totalItems > 0 && (
+          <div className="flex flex-wrap items-center justify-between px-5 py-4 border-t border-white/[0.06] bg-white/[0.01] gap-4">
+            <div className="flex items-center gap-3">
+              <p className="text-xs text-gray-400">
+                Menampilkan <span className="font-semibold text-white">{Math.min((currentPage - 1) * perPage + 1, totalItems)}</span> - <span className="font-semibold text-white">{Math.min(currentPage * perPage, totalItems)}</span> dari <span className="font-semibold text-white">{totalItems}</span> transaksi
+              </p>
+              <select
+                className="input-field text-xs py-1 px-2 w-auto"
+                value={perPage}
+                onChange={(e) => {
+                  setPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+              >
+                <option value={10}>10 per hal</option>
+                <option value={15}>15 per hal</option>
+                <option value={25}>25 per hal</option>
+                <option value={50}>50 per hal</option>
+              </select>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  className="btn-secondary py-1 px-3 text-xs disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  ◀ Sebelumnya
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-7 h-7 rounded-lg text-xs font-semibold flex items-center justify-center transition-all ${
+                      currentPage === page
+                        ? 'bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/20'
+                        : 'text-gray-400 hover:bg-white/[0.05] hover:text-white'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  className="btn-secondary py-1 px-3 text-xs disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  Selanjutnya ▶
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
