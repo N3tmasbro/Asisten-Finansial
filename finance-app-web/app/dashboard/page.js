@@ -36,10 +36,11 @@ export default function DashboardPage() {
       }
       if (walletRes.status === 'fulfilled') {
         const wData = walletRes.value;
-        setWallets(Array.isArray(wData) ? wData : (wData.data || []));
+        setWallets(wData.wallets || wData.data || (Array.isArray(wData) ? wData : []));
       }
       if (summaryRes.status === 'fulfilled') {
-        setSummary(summaryRes.value);
+        const sData = summaryRes.value;
+        setSummary(sData.summary || sData);
       }
     } catch (err) {
       console.error('Dashboard fetch error:', err);
