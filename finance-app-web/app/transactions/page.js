@@ -12,6 +12,9 @@ export default function TransactionsPage() {
   const [filter, setFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [walletFilter, setWalletFilter] = useState('');
+  const [periodFilter, setPeriodFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [sortKey, setSortKey] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,7 +40,7 @@ export default function TransactionsPage() {
     setLoading(true);
     try {
       const [txRes, catRes, walletRes] = await Promise.allSettled([
-        api.getTransactions({ limit: 50, sort: 'latest' }),
+        api.getTransactions({ per_page: 200, sort: 'latest' }),
         api.getCategories(),
         api.getWallets(),
       ]);
@@ -128,6 +131,26 @@ export default function TransactionsPage() {
     if (filter === 'review' && tx.is_reviewed) return false;
     if (categoryFilter && Number(tx.category_id) !== Number(categoryFilter)) return false;
     if (walletFilter && Number(tx.wallet_id) !== Number(walletFilter)) return false;
+
+    // Period filter
+    if (periodFilter === 'this_month') {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const prefix = `${y}-${m}`;
+      if (!tx.transaction_date?.startsWith(prefix)) return false;
+    } else if (periodFilter === 'last_month') {
+      const now = new Date();
+      const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const y = prev.getFullYear();
+      const m = String(prev.getMonth() + 1).padStart(2, '0');
+      const prefix = `${y}-${m}`;
+      if (!tx.transaction_date?.startsWith(prefix)) return false;
+    } else if (periodFilter === 'custom') {
+      if (dateFrom && tx.transaction_date < dateFrom) return false;
+      if (dateTo && tx.transaction_date > dateTo) return false;
+    }
+
     if (searchQuery && !tx.description.toLowerCase().includes(searchQuery.toLowerCase()) &&
         !(tx.raw_input && tx.raw_input.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
     return true;
@@ -283,6 +306,36 @@ export default function TransactionsPage() {
             </button>
           ))}
         </div>
+
+        {/* Period / Time Filter */}
+        <select
+          className="input-field max-w-xs text-sm py-2 font-medium"
+          value={periodFilter}
+          onChange={(e) => setPeriodFilter(e.target.value)}
+        >
+          <option value="all">📅 Semua Waktu</option>
+          <option value="this_month">📅 Bulan Ini (Agustus 2026)</option>
+          <option value="last_month">📅 Bulan Lalu (Juli 2026)</option>
+          <option value="custom">📅 Custom Tanggal...</option>
+        </select>
+
+        {periodFilter === 'custom' && (
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              className="input-field text-xs py-1.5"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+            <span className="text-gray-500 text-xs">s/d</span>
+            <input
+              type="date"
+              className="input-field text-xs py-1.5"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+          </div>
+        )}
 
         {/* Category Filter */}
         <select

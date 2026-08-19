@@ -60,9 +60,17 @@ class TransactionController extends Controller
             });
         }
 
+        $perPage = $request->input('per_page') ?? $request->input('limit') ?? 50;
+
+        if ($perPage === 'all' || (int) $perPage > 200) {
+            $perPage = 200;
+        } else {
+            $perPage = max(1, (int) $perPage);
+        }
+
         $transactions = $query->orderByDesc('transaction_date')
             ->orderByDesc('created_at')
-            ->paginate($request->input('per_page', 20));
+            ->paginate($perPage);
 
         return response()->json($transactions);
     }
