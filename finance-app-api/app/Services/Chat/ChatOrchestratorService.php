@@ -29,6 +29,21 @@ class ChatOrchestratorService
     /** Max minutes before a pending action expires */
     private const PENDING_EXPIRY_MINUTES = 10;
 
+    /** Greeting message sent once per 24h to unregistered senders */
+    private const UNREGISTERED_GREETING =
+        "Halo gan/sis! 👋 Lu belum terdaftar di database kami nih.\n\n" .
+        "Bot ini adalah asisten keuangan pribadi yang ngerti chat biasa soal duit. Contoh:\n\n" .
+        "💸 \"Beli kopi 20rb\" → langsung kerekam\n" .
+        "📊 \"Gue udah abis berapa sih?\" → AI jawab\n" .
+        "⏳ \"Kapan saldo gue habis?\" → AI prediksi\n\n" .
+        "Fitur:\n" .
+        "💬 Chat santai, AI yang parse (tanpa isi form ribet)\n" .
+        "📊 Laporan tren pengeluaran\n" .
+        "🤖 Saran hemat dari AI\n" .
+        "💰 Prediksi ketahanan saldo\n" .
+        "📱 Semua langsung lewat WhatsApp\n\n" .
+        "Mau coba? Daftar gratis di:\nhttps://savings.marridho.tech\n(30 detik doang! ⚡)";
+
     public function __construct(
         private AIProviderInterface $aiProvider,
         private WhatsAppProviderInterface $whatsAppProvider,
@@ -43,6 +58,7 @@ class ChatOrchestratorService
         private DeleteHandlerService $deleteHandler,
         private InspectHandlerService $inspectHandler,
         private ManageRecordsHandlerService $manageHandler,
+        private UnregisteredUserService $unregisteredUserService,
     ) {}
 
     /**
@@ -65,23 +81,7 @@ class ChatOrchestratorService
         $replyTo = $dto->replyJid ?? $dto->phoneNumber;
 
         if (!$user) {
-            $this->whatsAppProvider->sendMessage(
-                $replyTo,
-                "Halo gan/sis! 👋 Lu belum terdaftar di database kami nih.\n\n" .
-                "Btw, nomor ini lagi testing jadi bot finance yang bisa ngerti chatmu soal duit? Tinggal ketik2 waee:\n\n" .
-                "\"Beli kopi 20rb\" → kerekam otomatis\n" .
-                "\"Gue udah abis berapa sih?\" → AI jawab\n" .
-                "\"Kapan saldo gue habis?\" → AI tau\n\n" .
-                "Bisa Apa:\n" .
-                "💬 Chat biasa, AI yang parse (gak usah isi form ribet)\n" .
-                "📊 Liat pengeluaran tren-nya\n" .
-                "🤖 Dapet saran hemat dari AI\n" .
-                "💰 Tau kapan duit bakal abis\n" .
-                "📱 Langsung di WhatsApp!\n\n" .
-                "Pengen? Daftar di sini: [link]\n" .
-                "30 detik doang bro! ⚡\n\n" .
-                "Mau info lebih? Reply 'INFO' atau 'BANTUAN'"
-            );
+            $this->handleUnregisteredUser($dto);
             return;
         }
         // Step 0: Idempotency check — prevent duplicate processing of same WA message
@@ -541,6 +541,41 @@ class ChatOrchestratorService
 
         $lines = $sampleSets[$key];
         return "💡 *Contoh perintah lain:*\n" . implode("\n", $lines);
+    }
+
+    // ─────────────────────────────────────────────────────
+    //  Unregistered User Handler
+    // ─────────────────────────────────────────────────────
+
+    /**
+     * Handle incoming message from an unregistered sender.
+     *
+     * Rate limit: send greeting only once per 24h per phone number.
+     * - First contact or expired window → send greeting & record timestamp
+     * - Within 24h window              → silently ignore (log only)
+     */
+    private function handleUnregisteredUser(IncomingMessageDTO $dto): void
+    {
+        $phone   = $dto->phoneNumber;
+        $replyTo = $dto->replyJid ?? $phone;
+
+        $action = $this->unregisteredUserService->shouldSendGreeting($phone);
+
+        if ($action === 'ignore') {
+            $this->unregisteredUserService->recordIgnoredMessage($phone, $dto->message);
+            return;
+        }
+
+        // $action === 'send'
+        try {
+            $this->whatsAppProvider->sendMessage($replyTo, self::UNREGISTERED_GREETING);
+            $this->unregisteredUserService->recordGreetingSent($phone, $dto->message);
+        } catch (\Exception $e) {
+            Log::error('[UnregisteredUser] Failed to send greeting', [
+                'phone' => $phone,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     // ─────────────────────────────────────────────────────

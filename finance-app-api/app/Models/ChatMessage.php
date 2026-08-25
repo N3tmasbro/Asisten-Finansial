@@ -15,19 +15,23 @@ class ChatMessage extends Model
 
     protected $fillable = [
         'user_id',
+        'sender_phone',
+        'user_status',
         'direction',
         'body',
         'intent',
         'ai_raw_response',
         'wa_message_id',
         'processed_at',
+        'last_unregistered_reply_at',
     ];
 
     protected $casts = [
-        'direction' => ChatDirection::class,
-        'intent' => MessageIntent::class,
-        'ai_raw_response' => 'array',
-        'processed_at' => 'datetime',
+        'direction'                    => ChatDirection::class,
+        'intent'                       => MessageIntent::class,
+        'ai_raw_response'              => 'array',
+        'processed_at'                 => 'datetime',
+        'last_unregistered_reply_at'   => 'datetime',
     ];
 
     public function user(): BelongsTo
