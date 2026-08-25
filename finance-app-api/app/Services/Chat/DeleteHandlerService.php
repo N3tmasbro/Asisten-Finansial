@@ -35,6 +35,13 @@ class DeleteHandlerService
     public function handle(User $user, string $message, ChatMessage $chatMessage): string|array
     {
         try {
+            $msgLower = mb_strtolower(trim($message));
+
+            // Check explicit "delete all" request
+            if (str_contains($msgLower, 'hapus semua') || str_contains($msgLower, 'delete all') || str_contains($msgLower, 'hapus seluruh')) {
+                return $this->requestDeleteAllConfirmation($user);
+            }
+
             // Build context for AI
             $context = $this->buildContext($user);
 
@@ -78,6 +85,28 @@ class DeleteHandlerService
 
             return "Maaf, gagal memproses penghapusan 😓 Coba lagi ya!";
         }
+    }
+
+    /**
+     * Request strict confirmation before deleting ALL transactions.
+     */
+    public function requestDeleteAllConfirmation(User $user): string|array
+    {
+        $count = Transaction::where('user_id', $user->id)->count();
+
+        if ($count === 0) {
+            return "Belum ada transaksi untuk dihapus 📝";
+        }
+
+        return [
+            'text' => "⚠️ *PERINGATAN KETAT!*\n\nApakah kamu benar-benar yakin ingin *MENGHAPUS SEMUA ({$count}) TRANSAKSI*?\n\nTindakan ini akan menghapus seluruh riwayat transaksi kamu dan mengosongkan saldo dompet.\n\nBalas *YA HAPUS SEMUA* untuk mengonfirmasi, atau *batal* untuk membatalkan.",
+            'pending_confirmation' => [
+                'action' => 'delete_all_transactions',
+                'transaction_count' => $count,
+                'created_at' => now()->toIso8601String(),
+                'expires_minutes' => 10,
+            ],
+        ];
     }
 
     /**
@@ -144,6 +173,15 @@ class DeleteHandlerService
         $this->transactionService->delete($transaction);
 
         return "Transaksi \"{$description}\" Rp{$amount} sudah dihapus dan saldo {$wallet} sudah disesuaikan ✅";
+    }
+
+    /**
+     * Execute confirmed deletion of ALL transactions.
+     */
+    public function executeDeleteAll(User $user): string
+    {
+        $count = $this->transactionService->deleteAllForUser($user);
+        return "Seluruh ({$count}) transaksi kamu telah berhasil dihapus dan saldo dompet telah disesuaikan kembali ✅";
     }
 
     /**

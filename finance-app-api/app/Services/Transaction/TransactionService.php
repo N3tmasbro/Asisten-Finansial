@@ -116,13 +116,39 @@ class TransactionService
     {
         return DB::transaction(function () use ($transaction) {
             $wallet = $transaction->wallet;
-            $reversal = $transaction->type === TransactionType::Income
-                ? -$transaction->amount
-                : $transaction->amount;
+            if ($wallet) {
+                $reversal = $transaction->type === TransactionType::Income
+                    ? -$transaction->amount
+                    : $transaction->amount;
 
-            $wallet->adjustBalance($reversal);
+                $wallet->adjustBalance($reversal);
+            }
 
             return $transaction->delete();
+        });
+    }
+
+    /**
+     * Delete ALL transactions for a user and reverse their balance effects.
+     */
+    public function deleteAllForUser(User $user): int
+    {
+        return DB::transaction(function () use ($user) {
+            $transactions = Transaction::where('user_id', $user->id)->get();
+            $count = $transactions->count();
+
+            foreach ($transactions as $transaction) {
+                $wallet = $transaction->wallet;
+                if ($wallet) {
+                    $reversal = $transaction->type === TransactionType::Income
+                        ? -$transaction->amount
+                        : $transaction->amount;
+                    $wallet->adjustBalance($reversal);
+                }
+                $transaction->delete();
+            }
+
+            return $count;
         });
     }
 

@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Log;
 class ChatOrchestratorService
 {
     /** Confirmation keywords — user agrees */
-    private const CONFIRM_YES = ['ya', 'iya', 'oke', 'yes', 'setuju', 'yup', 'bener', 'benar', 'ok', 'sip', 'sep'];
+    private const CONFIRM_YES = ['ya', 'iya', 'oke', 'yes', 'setuju', 'yup', 'bener', 'benar', 'ok', 'sip', 'sep', 'ya hapus semua', 'ya hapus', 'hapus semua'];
 
     /** Confirmation keywords — user cancels */
     private const CONFIRM_NO = ['tidak', 'no', 'cancel', 'batal', 'ga jadi', 'gjd', 'g jadi', 'dk jadi', 'urung', 'dak', 'idak', 'dk'];
@@ -226,6 +226,7 @@ class ChatOrchestratorService
                 $user,
                 $pending['transaction_id'] ?? 0
             ),
+            'delete_all_transactions' => $this->deleteHandler->executeDeleteAll($user),
             default => "Aksi tidak dikenali 🤔",
         };
     }

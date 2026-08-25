@@ -165,8 +165,8 @@ Intent yang tersedia:
 - "add_transaction": user ingin mencatat transaksi BARU yang belum ada di sistem (contoh: "isi bensin 200 ribu", "beli kopi 20rb", "gajian 5 juta", "makan siang 35rb")
 - "query_report": user ingin laporan atau statistik keuangan (contoh: "bulan ini habis berapa?", "pengeluaran makan minggu ini", "ringkasan bulan ini", "total pengeluaran")
 - "correction": user ingin MENGUBAH transaksi yang SUDAH ADA di sistem — ditandai kata: "yang tadi", "yang kemarin", "harusnya", "salah", "koreksi", "ubah", "ganti", "ralat", "bukan" (contoh: "yang kopi tadi harusnya Hiburan", "yang bensin salah harusnya 80rb", "koreksi yang tadi jadi 50rb", "bukan BCA tapi Cash")
-- "delete_transaction": user ingin MENGHAPUS transaksi yang sudah ada (contoh: "hapus yang bensin tadi", "delete transaksi terakhir", "batalkan yang kopi", "hilangkan transaksi bensin")
-- "inspect_records": user ingin MELIHAT data yang ada tanpa mengubah apapun (contoh: "saldo BCA berapa?", "saldo semua wallet", "transaksi terakhir apa?", "daftar wallet", "daftar kategori", "budget makan bulan ini?", "riwayat transaksi", "cek saldo")
+- "delete_transaction": user ingin MENGHAPUS transaksi yang sudah ada (contoh: "hapus yang bensin tadi", "delete transaksi terakhir", "batalkan yang kopi", "hilangkan transaksi bensin", "hapus semua transaksi")
+- "inspect_records": user ingin MELIHAT data yang ada tanpa mengubah apapun (contoh: "saldo BCA berapa?", "saldo semua wallet", "transaksi terakhir apa?", "daftar wallet", "daftar kategori", "budget makan bulan ini?", "riwayat transaksi", "cek saldo", "sisa budget", "sis budget", "sisa anggaran", "sis anggaran")
 - "savings_advice": user ingin saran penghematan atau tips hemat keuangan (contoh: "kasih saran dong", "di mana bisa aku hemat?", "tips hemat", "gimana caranya aku bisa nabung?", "pengeluaranku boros di mana?")
 - "manage_records": user ingin MEMBUAT, MENGUBAH, atau MENGATUR wallet/kategori/budget/saldo.
   Contoh klasik: "buat wallet Dana", "tambah kategori Investasi", "buat budget makan 2 juta", "rename wallet BCA jadi BCA Digital", "naikkan budget makan jadi 2,5 juta"
@@ -180,7 +180,7 @@ Intent yang tersedia:
 
 ATURAN PENTING — baca ini dengan seksama:
 1. Jika pesan mengandung "yang tadi", "yang kemarin", "harusnya", "salah" = CORRECTION bukan add_transaction
-2. Jika pesan mengandung "saldo", "cek", "daftar", "riwayat", "transaksi terakhir" = INSPECT bukan yang lain
+2. Jika pesan mengandung "saldo", "cek", "daftar", "riwayat", "transaksi terakhir", "sisa budget", "sis budget", "sisa" = INSPECT bukan yang lain
 3. Jika pesan mengandung "buat", "tambah", "rename", "naikkan", "turunkan" untuk wallet/kategori/budget = MANAGE
 4. Jika pesan mengandung "hapus", "delete", "hilangkan" untuk transaksi = DELETE
 5. add_transaction HANYA untuk transaksi yang benar-benar BARU, bukan referensi ke transaksi lama

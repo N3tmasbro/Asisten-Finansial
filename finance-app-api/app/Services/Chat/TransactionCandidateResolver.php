@@ -91,11 +91,6 @@ class TransactionCandidateResolver
             }
         }
 
-        // If no specific hints, limit to recent transactions (last 7 days)
-        if (!$hasHints) {
-            $query->where('transaction_date', '>=', now()->subDays(7)->toDateString());
-        }
-
         return $query
             ->orderByDesc('transaction_date')
             ->orderByDesc('created_at')
@@ -110,8 +105,8 @@ class TransactionCandidateResolver
      */
     public function formatCandidateList(Collection $candidates, string $action = 'koreksi'): array
     {
-        $actionVerb = $action === 'hapus' ? 'dihapus' : 'diubah';
-        $numberEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'];
+        $actionVerb   = $action === 'hapus' ? 'dihapus' : 'diubah';
+        $numberEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
 
         $months = [
             'Jan' => 'Jan', 'Feb' => 'Feb', 'Mar' => 'Mar', 'Apr' => 'Apr',
@@ -121,8 +116,9 @@ class TransactionCandidateResolver
 
         $lines = ["📋 *Pilih transaksi yang ingin {$actionVerb}:*\n"];
         $candidateData = [];
+        $displayCount = min($candidates->count(), 10);
 
-        foreach ($candidates->take(5) as $i => $tx) {
+        foreach ($candidates->take(10) as $i => $tx) {
             $amount   = number_format($tx->amount, 0, ',', '.');
             $isIncome = $tx->type->value === 'income';
             $sign     = $isIncome ? '➕' : '➖';
@@ -147,7 +143,15 @@ class TransactionCandidateResolver
             ];
         }
 
-        $lines[] = "Balas dengan *nomor* (misal: *1*) atau deskripsi yang lebih spesifik.";
+        $lines[] = "Balas dengan *nomor* (1 - {$displayCount}) atau deskripsi yang lebih spesifik.";
+
+        if ($action === 'hapus') {
+            $lines[] = "";
+            $lines[] = "〰️〰️〰️";
+            $lines[] = "💡 *Opsi hapus:*";
+            $lines[] = "  • Balas *nomor* (misal: *1*) untuk hapus 1 transaksi";
+            $lines[] = "  • Ketik _hapus semua transaksi_ untuk menghapus seluruh riwayat";
+        }
 
         return [
             'text'       => implode("\n", $lines),

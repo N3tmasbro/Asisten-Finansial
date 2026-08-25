@@ -40,7 +40,9 @@ class InspectHandlerService
         'cek budget', 'lihat budget', 'tampil budget', 'show budget',
         'budget saya', 'budget ku', 'budgetku', 'anggaran saya',
         'daftar budget', 'list budget', 'budget apa aja', 'semua budget',
-        'cek anggaran', 'lihat anggaran',
+        'cek anggaran', 'lihat anggaran', 'sisa budget', 'sis budget',
+        'sisa anggaran', 'sis anggaran', 'sisa limit', 'sisa budgetku',
+        'sisa budget saya', 'info budget', 'status budget',
     ];
 
     private const CATEGORY_KEYWORDS = [
@@ -61,13 +63,17 @@ class InspectHandlerService
         $msg = mb_strtolower(trim($message));
 
         try {
-            // ── Budget (specific category) — check before generic budget ──
-            if (preg_match('/(?:cek\s+|lihat\s+)?budget\s+([a-zA-Z0-9\s]+?)(?:\s+bulan\s+ini)?$/i', $msg, $matches)) {
-                $categoryHint = trim($matches[1]);
-                $skip = ['apa', 'berapa', 'gimana', 'saya', 'ku', 'aku', 'semua', 'list', 'daftar'];
-                if (!in_array($categoryHint, $skip) && strlen($categoryHint) > 2) {
-                    return $this->getBudgetStatus($user, $categoryHint);
+            // ── Budget (sisa budget / sis budget / budget specific or all) ──
+            if ($this->matchesKeywords($msg, self::BUDGET_KEYWORDS) || str_contains($msg, 'budget') || str_contains($msg, 'anggaran')) {
+                // Check if specific category was requested, e.g. "budget makanan"
+                if (preg_match('/(?:cek\s+|lihat\s+|sisa\s+|sis\s+)?budget\s+([a-zA-Z0-9\s]+?)(?:\s+bulan\s+ini)?$/i', $msg, $matches)) {
+                    $categoryHint = trim($matches[1]);
+                    $skip = ['apa', 'berapa', 'gimana', 'saya', 'ku', 'aku', 'semua', 'list', 'daftar', 'sisa', 'sis', 'total', 'info', 'status'];
+                    if (!in_array($categoryHint, $skip) && strlen($categoryHint) > 2) {
+                        return $this->getBudgetStatus($user, $categoryHint);
+                    }
                 }
+                return $this->listBudgets($user);
             }
 
             // ── Wallets / Dompet ──────────────────────────────────────────
