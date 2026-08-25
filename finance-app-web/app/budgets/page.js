@@ -118,19 +118,19 @@ export default function BudgetsPage() {
   const availableCategories = categories.filter(c => !usedCategoryIds.includes(c.id));
 
   return (
-    <div style={{ padding: 32 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+    <div className="p-4 md:p-8 w-full">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-7">
         <div>
           <h1 className="font-poppins" style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>Budget</h1>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '4px 0 0' }}>Tetapkan dan pantau batas pengeluaran bulanan</p>
         </div>
-        <button className="btn-primary" onClick={() => { setShowForm(!showForm); setEditBudget(null); setError(''); }}>
+        <button className="btn-primary w-full md:w-auto justify-center" onClick={() => { setShowForm(!showForm); setEditBudget(null); setError(''); }}>
           + Tambah Budget
         </button>
       </div>
 
       {/* Overview */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-7">
         <StatCard title="Total Budget" value={formatRupiah(totalBudget)} subtitle="Per bulan" color="teal"
           icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>} />
         <StatCard title="Terpakai" value={formatRupiah(totalUsed)} subtitle="Bulan ini" color="red"
@@ -159,7 +159,7 @@ export default function BudgetsPage() {
             {availableCategories.length === 0 ? (
               <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16 }}>Semua kategori sudah memiliki budget bulan ini.</p>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Kategori</label>
                   <select className="input-field" value={form.category_id}

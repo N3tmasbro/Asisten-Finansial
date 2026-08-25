@@ -106,7 +106,7 @@ export default function SettingsPage() {
   const botName = bridgeStatus?.user?.name || null;
 
   return (
-    <div style={{ padding: 32, maxWidth: 720 }}>
+    <div className="p-4 md:p-8 w-full max-w-3xl">
       <div style={{ marginBottom: 28 }}>
         <h1 className="font-poppins" style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>Pengaturan</h1>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '4px 0 0' }}>Kelola profil dan koneksi WhatsApp</p>
@@ -222,7 +222,7 @@ export default function SettingsPage() {
                     </p>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div className="flex flex-col md:flex-row md:items-center gap-3">
                     <button
                       id="btn-verify-otp"
                       type="submit"

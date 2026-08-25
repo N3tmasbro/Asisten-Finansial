@@ -106,13 +106,13 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div style={{ padding: 32 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+    <div className="p-4 md:p-8 w-full">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-7">
         <div>
           <h1 className="font-poppins" style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>Kategori</h1>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '4px 0 0' }}>Kelola kategori pengeluaran dan pemasukan</p>
         </div>
-        <button className="btn-primary" onClick={() => { setShowForm(!showForm); setError(''); }}>
+        <button className="btn-primary w-full md:w-auto justify-center" onClick={() => { setShowForm(!showForm); setError(''); }}>
           + Tambah Kategori
         </button>
       </div>
@@ -128,7 +128,7 @@ export default function CategoriesPage() {
             {error && (
               <div style={{ padding: 12, borderRadius: 8, fontSize: 13, color: 'var(--accent-red)', background: 'var(--accent-red-bg)', marginBottom: 16 }}>{error}</div>
             )}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Nama</label>
                 <input type="text" className="input-field" placeholder="Nama kategori"

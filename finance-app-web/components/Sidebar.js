@@ -102,7 +102,6 @@ export default function Sidebar() {
       backgroundColor: 'var(--bg-secondary)',
       borderRight: '1px solid var(--border)',
       display: 'flex', flexDirection: 'column',
-      position: 'fixed', top: 0, left: 0, zIndex: 50,
     }}>
       {/* Logo */}
       <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid var(--border)' }}>

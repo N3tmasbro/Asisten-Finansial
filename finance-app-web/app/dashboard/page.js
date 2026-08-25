@@ -99,9 +99,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ padding: 32, minHeight: '100vh', backgroundColor: 'var(--bg-base)' }}>
+    <div className="p-4 md:p-8 min-h-screen bg-[var(--bg-base)] w-full">
       {/* Page Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
+      <div className="flex flex-col md:flex-row md:items-start justify-between mb-7 gap-4">
         <div>
           <h1 className="font-poppins" style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', margin: 0, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
             Dashboard
@@ -192,7 +192,7 @@ export default function DashboardPage() {
       )}
 
       {/* Stat Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
         <StatCard title="Total Saldo" value={formatRupiah(totalBalance)} subtitle={`${wallets.length} dompet aktif`} color="teal" icon={
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20 12V22H4V12" /><path d="M22 7H2v5h20V7z" /><path d="M12 22V7" />
@@ -218,9 +218,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent Transactions + Category Breakdown */}
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 16, marginBottom: 28 }}>
+      <div className="flex flex-col lg:flex-row gap-4 mb-7">
         {/* Recent Transactions */}
-        <div className="card" style={{ padding: 24 }}>
+        <div className="card p-6 w-full lg:w-3/5">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Transaksi Terbaru</h2>
             <a href="/transactions" style={{ background: 'none', border: 'none', color: 'var(--color-accent)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
@@ -280,7 +280,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Category Breakdown */}
-        <div className="card" style={{ padding: 24 }}>
+        <div className="card p-6 w-full lg:w-2/5">
           <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 16px' }}>
             Pengeluaran per Kategori
           </h2>
@@ -317,9 +317,9 @@ export default function DashboardPage() {
         {wallets.length === 0 ? (
           <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Belum ada dompet.</p>
         ) : (
-          <div style={{ display: 'flex', gap: 16 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {wallets.map((wallet, i) => (
-              <div key={wallet.id || i} className="card" style={{ padding: 20, flex: 1, transition: 'box-shadow 0.2s, transform 0.2s' }}
+              <div key={wallet.id || i} className="card" style={{ padding: 20, transition: 'box-shadow 0.2s, transform 0.2s' }}
                 onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
               >

@@ -157,14 +157,14 @@ export default function AnalyticsPage() {
   const isMonthPickerActive = period.startsWith('specific_month:');
 
   return (
-    <div style={{ padding: 32 }}>
+    <div className="p-4 md:p-8 w-full">
       {/* Header & Filter */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-7">
         <div>
           <h1 className="font-poppins" style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>Analitik</h1>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '4px 0 0' }}>Insight mendalam tentang pola keuanganmu</p>
         </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div className="flex flex-wrap gap-2 items-center">
           {mainFilters.map((p) => (
             <button
               key={p}
@@ -241,7 +241,7 @@ export default function AnalyticsPage() {
       ) : (
         <>
           {/* Stat Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-7">
             <StatCard
               title={`Pengeluaran ${periodInfo.short}`}
               value={formatRupiah(totalExpense)}
@@ -282,9 +282,9 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Charts Row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 20 }}>
+          <div className="flex flex-col lg:flex-row gap-4 mb-5">
             {/* Daily Spending Trend */}
-            <div className="card" style={{ padding: 24 }}>
+            <div className="card p-6 w-full lg:w-2/3">
               <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 16px' }}>Tren Pengeluaran Harian</h2>
               {dailyData.length > 0 ? (
                 <div style={{ width: '100%', height: 300 }}>
@@ -318,7 +318,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Category Donut */}
-            <div className="card" style={{ padding: 24 }}>
+            <div className="card p-6 w-full lg:w-1/3">
               <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 16px' }}>Kategori</h2>
               {pieData.length > 0 ? (
                 <>
@@ -356,12 +356,12 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Category Comparison */}
-          <div className="card" style={{ padding: 24 }}>
+          <div className="card p-6 w-full overflow-x-auto">
             <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 16px' }}>
               Perbandingan {periodInfo.short} vs {periodInfo.prevFull}
             </h2>
             {comparisonData.length > 0 ? (
-              <div style={{ width: '100%', height: 300 }}>
+              <div style={{ width: '100%', height: 300, minWidth: 500 }}>
                 <ResponsiveContainer>
                   <BarChart data={comparisonData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />

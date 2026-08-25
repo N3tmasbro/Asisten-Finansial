@@ -233,9 +233,9 @@ export default function TransactionsPage() {
   });
 
   return (
-    <div style={{ padding: 32 }}>
+    <div className="p-4 md:p-8 w-full">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-7">
         <div>
           <h1 className="font-poppins" style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>Transaksi</h1>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '4px 0 0' }}>Riwayat lengkap semua transaksi kamu</p>
@@ -262,7 +262,7 @@ export default function TransactionsPage() {
             {error && (
               <div style={{ padding: 12, borderRadius: 8, fontSize: 13, color: 'var(--accent-red)', background: 'var(--accent-red-bg)', marginBottom: 16 }}>{error}</div>
             )}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Deskripsi</label>
                 <input type="text" className="input-field" placeholder="Makan siang, bensin, dll."
@@ -318,8 +318,8 @@ export default function TransactionsPage() {
       )}
 
       {/* Filters Row 1: Tipe & Search */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-        <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+      <div className="flex flex-col md:flex-row flex-wrap md:items-center gap-3 mb-3">
+        <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-card)' }} className="w-full md:w-auto overflow-x-auto">
           {[
             { key: 'all', label: 'Semua' },
             { key: 'expense', label: 'Pengeluaran' },
@@ -366,8 +366,8 @@ export default function TransactionsPage() {
       </div>
 
       {/* Filters Row 2: Time Period (BUG-008) */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+      <div className="flex flex-col md:flex-row flex-wrap md:items-center gap-3 mb-5">
+        <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-card)' }} className="w-full md:w-auto overflow-x-auto">
           {[
             { key: 'all', label: 'Semua Waktu' },
             { key: 'this_month', label: 'Bulan Ini' },
@@ -409,7 +409,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* Transaction Table */}
-      <div className="card" style={{ overflow: 'hidden' }}>
+      <div className="card overflow-x-auto w-full">
         {loading ? (
           <div style={{ padding: 48, textAlign: 'center' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }} className="animate-pulse">💸</div>
@@ -417,7 +417,7 @@ export default function TransactionsPage() {
           </div>
         ) : (
           <>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="w-full border-collapse min-w-[800px]">
               <thead>
                 <tr style={{ background: 'var(--bg-secondary)' }}>
                   {[

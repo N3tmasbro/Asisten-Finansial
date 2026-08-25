@@ -102,13 +102,13 @@ export default function WalletsPage() {
   const totalBalance = wallets.reduce((sum, w) => sum + (w.balance || 0), 0);
 
   return (
-    <div style={{ padding: 32 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+    <div className="p-4 md:p-8 w-full">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-7">
         <div>
           <h1 className="font-poppins" style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>Dompet</h1>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '4px 0 0' }}>Kelola dompet dan saldo kamu</p>
         </div>
-        <button className="btn-primary" onClick={() => { setShowForm(!showForm); setEditWallet(null); setError(''); }}>
+        <button className="btn-primary w-full md:w-auto justify-center" onClick={() => { setShowForm(!showForm); setEditWallet(null); setError(''); }}>
           + Tambah Dompet
         </button>
       </div>
@@ -131,7 +131,7 @@ export default function WalletsPage() {
             {error && (
               <div style={{ padding: 12, borderRadius: 8, fontSize: 13, color: 'var(--accent-red)', background: 'var(--accent-red-bg)', marginBottom: 16 }}>{error}</div>
             )}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Nama</label>
                 <input type="text" className="input-field" placeholder="BRI, Dana, OVO..." value={form.name}
@@ -168,7 +168,7 @@ export default function WalletsPage() {
             {error && (
               <div style={{ padding: 12, borderRadius: 8, fontSize: 13, color: 'var(--accent-red)', background: 'var(--accent-red-bg)', marginBottom: 16 }}>{error}</div>
             )}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Nama</label>
                 <input type="text" className="input-field" value={form.name}
@@ -202,7 +202,7 @@ export default function WalletsPage() {
           <p style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>Tambahkan dompet pertamamu untuk mulai mencatat saldo</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {wallets.map((wallet) => (
             <div key={wallet.id} className="card" style={{ padding: 20, transition: 'transform 0.2s, box-shadow 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
