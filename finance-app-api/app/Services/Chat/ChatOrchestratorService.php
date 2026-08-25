@@ -584,49 +584,48 @@ class ChatOrchestratorService
 
     /**
      * Find user by phone number or WhatsApp LID.
-     * Auto-links LID to user on first match for future lookups.
+     *
+     * Security rules:
+     * - Phone number match is ONLY accepted if the user has a verified phone number.
+     * - LID match is accepted if a user already has that LID saved.
+     * - Unknown numbers/LIDs are REJECTED — no fallback to "first user".
+     * - Auto-links a verified user's LID on first contact for future lookups.
      */
     private function findUser(IncomingMessageDTO $dto): ?User
     {
         $identifier = $dto->phoneNumber;
 
-        // Try direct phone number match first
-        $user = User::where('phone_number', $identifier)->first();
+        // 1. Try direct phone number match — must be a registered AND verified user
+        $user = User::where('phone_number', $identifier)
+            ->whereHas('phoneVerifications', function ($q) {
+                $q->whereNotNull('verified_at');
+            })
+            ->first();
+
         if ($user) {
-            // If we have a LID and user doesn't have one yet, save it
+            // Auto-link LID on first contact so future messages via LID still work
             if ($dto->replyJid && str_contains($dto->replyJid, '@lid') && !$user->wa_lid) {
                 $lid = str_replace('@lid', '', $dto->replyJid);
                 $user->update(['wa_lid' => $lid]);
-                Log::info('Linked WA LID to user', ['user_id' => $user->id, 'lid' => $lid]);
+                Log::info('Linked WA LID to verified user', ['user_id' => $user->id, 'lid' => $lid]);
             }
             return $user;
         }
 
-        // Try LID match
-        $user = User::where('wa_lid', $identifier)->first();
-        if ($user) {
-            return $user;
-        }
-
-        // The identifier might be a LID that we haven't seen before
-        // For solo dev / small scale: auto-link to the first verified user
-        if ($dto->replyJid && str_contains($dto->replyJid, '@lid')) {
-            // Find users who have a verified phone number
-            $user = User::whereHas('phoneVerifications', function ($q) {
-                $q->whereNotNull('verified_at');
-            })->first();
-
-            // Fallback: just get the first user (solo dev scenario)
-            if (!$user) {
-                $user = User::first();
-            }
-
+        // 2. Try LID match — only if this LID is already tied to a known user
+        if (!empty($identifier)) {
+            $user = User::where('wa_lid', $identifier)->first();
             if ($user) {
-                $user->update(['wa_lid' => $identifier]);
-                Log::info('Auto-linked LID to user', ['user_id' => $user->id, 'lid' => $identifier]);
                 return $user;
             }
         }
+
+        // 3. No match — reject the sender entirely.
+        // We intentionally do NOT fall back to User::first() or any other user.
+        Log::warning('WA message from unrecognized / unverified sender', [
+            'identifier' => $identifier,
+            'reply_jid'  => $dto->replyJid,
+        ]);
 
         return null;
     }
