@@ -596,7 +596,15 @@ class ChatOrchestratorService
         ]);
 
         if (empty($parsedTransactions)) {
-            return "Hmm, aku nggak bisa baca transaksinya 🤔 Coba format: \"beli kopi 20rb\"";
+            return "Hmm, aku nggak bisa baca transaksinya 🤔\n\nCoba format yang lebih jelas:\n_makan siang 35rb_\n_gajian 5 juta_\n_bensin 50rb_";
+        }
+
+        // Check if ANY transactions need clarification (e.g. no amount given)
+        $needsClarification = collect($parsedTransactions)->first(fn($p) => $p->needsClarification);
+        if ($needsClarification) {
+            $reason = $needsClarification->clarificationReason ?? 'nominal tidak disebutkan';
+            $desc   = $needsClarification->description ?? $message;
+            return "Aku nangkep *{$desc}*, tapi {$reason} 🤔\n\nSebutkan nominal-nya ya, contoh:\n_\"{$desc} 50rb\"_";
         }
 
         // Save transactions with wallet balance update
@@ -606,10 +614,10 @@ class ChatOrchestratorService
         $txData = [
             'transactions' => array_map(fn($tx) => [
                 'description' => $tx->description,
-                'amount' => $tx->amount,
-                'type' => $tx->type->value,
-                'category' => $tx->category->name,
-                'wallet' => $tx->wallet->name,
+                'amount'      => $tx->amount,
+                'type'        => $tx->type->value,
+                'category'    => $tx->category->name,
+                'wallet'      => $tx->wallet->name,
             ], $transactions),
             'low_confidence' => collect($parsedTransactions)->contains(fn($p) => $p->isLowConfidence()),
         ];
@@ -677,7 +685,18 @@ class ChatOrchestratorService
 
     private function handleUnclear(): string
     {
-        return $this->aiProvider->formatResponse('unclear', []);
+        return implode("\n", [
+            "Hmm, aku kurang paham maksudnya 🤔",
+            "",
+            "Coba salah satu perintah ini:",
+            "  _beli kopi 20rb_ — catat pengeluaran",
+            "  _gajian 5jt_ — catat pemasukan",
+            "  _cek dompet_ — lihat saldo",
+            "  _cek transaksi_ — riwayat transaksi",
+            "  _cek budget_ — status budget",
+            "  _bulan ini habis berapa?_ — laporan",
+            "  _hapus transaksi terakhir_ — hapus",
+        ]);
     }
 
     /**
