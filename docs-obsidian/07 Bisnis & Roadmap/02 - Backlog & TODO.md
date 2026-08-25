@@ -18,6 +18,11 @@ Daftar hal yang **belum selesai** atau **perlu didiskusikan** lebih lanjut.
 - [x] **[BUG-004] WhatsApp Bridge Bad MAC Connection Status** — FIXED: Mendeteksi error dekripsi Bad MAC melalui console.error dan memaksa status bridge terlaporkan "Tidak Terhubung" agar user tahu sesi harus di-reconnect.
 - [x] **[BUG-005] Infinite Redirect Loop di Frontend** — FIXED: Menghapus redirect paksa dari api.js 401 response dan menyatukannya di AuthContext menggunakan router.replace (client-side routing) agar tidak memicu reload loop.
 - [x] **[BUG-006] Profil Kosong di Settings setelah Login/Register** — FIXED: Mengubah halaman login & register agar memanggil auth helper (`login`/`register`) dari `useAuth()` hook dan bukan client API langsung, sehingga data profil di AuthContext langsung tersinkronisasi global tanpa perlu manual refresh.
+- [x] **[BUG-009] Security Vulnerability Auto-Link Akun WA (Unregistered Sender)** — FIXED: Menghapus fallback `User::first()` yang berbahaya. Pengirim tak dikenal ditolak (null) & dipandu registrasi.
+- [x] **[BUG-010] Spam Pesan dari Pengguna Tidak Terdaftar (Unregistered Senders)** — FIXED: Mengimplementasikan `UnregisteredUserService` dengan 24-hour rate limiting window (greeting 1x per 24 jam per nomor).
+- [x] **[BUG-011] Status Bad MAC Latching pada WhatsApp Bridge** — FIXED: Menghapus permanent error latching pada `index.js` bridge sehingga status offline palsu di web teratasi.
+- [x] **[BUG-012] Format Tabel ASCII Berantakan di Mobile & Routing Keyword Budget/Dompet** — FIXED: Redesain balasan WA menjadi mobile-responsive bullet-list emoji, memperluas keyword `sisa budget` & `sis budget`, dan mencegat pesan tanpa nominal.
+- [x] **[BUG-013] Inkonsistensi Template Kandidat Hapus & Fitur Hapus Semua Transaksi** — FIXED: Menyertakan template emoji bertingkat `1️⃣`-`🔟` pada daftar kandidat hapus/edit, menambah dukungan query rentang tanggal & limit, dan menambahkan fitur *Hapus Semua Transaksi* dengan *strict confirmation prompt*.
 
 ---
 
