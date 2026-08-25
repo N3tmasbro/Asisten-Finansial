@@ -104,36 +104,53 @@ class TransactionCandidateResolver
     }
 
     /**
-     * Format candidates as a numbered list for user display.
+     * Format candidates as a numbered list for user display matching the mobile template.
      *
      * @return array{text: string, candidates: array} Text for display + candidate data for storage
      */
     public function formatCandidateList(Collection $candidates, string $action = 'koreksi'): array
     {
-        $lines = ["Aku menemukan beberapa transaksi yang cocok:\n"];
+        $actionVerb = $action === 'hapus' ? 'dihapus' : 'diubah';
+        $numberEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'];
+
+        $months = [
+            'Jan' => 'Jan', 'Feb' => 'Feb', 'Mar' => 'Mar', 'Apr' => 'Apr',
+            'May' => 'Mei', 'Jun' => 'Jun', 'Jul' => 'Jul', 'Aug' => 'Agu',
+            'Sep' => 'Sep', 'Oct' => 'Okt', 'Nov' => 'Nov', 'Dec' => 'Des',
+        ];
+
+        $lines = ["📋 *Pilih transaksi yang ingin {$actionVerb}:*\n"];
         $candidateData = [];
 
         foreach ($candidates->take(5) as $i => $tx) {
-            $amount = number_format($tx->amount, 0, ',', '.');
-            $type = $tx->type->value === 'income' ? '+' : '-';
-            $date = $tx->transaction_date->format('j M Y');
-            $wallet = $tx->wallet->name ?? 'Unknown';
-            $category = $tx->category->name ?? 'Unknown';
+            $amount   = number_format($tx->amount, 0, ',', '.');
+            $isIncome = $tx->type->value === 'income';
+            $sign     = $isIncome ? '➕' : '➖';
+            $wallet   = $tx->wallet->name ?? 'Cash';
+            $category = $tx->category->name ?? 'Lainnya';
+            $monthEng = $tx->transaction_date->format('M');
+            $dateStr  = $tx->transaction_date->format('j') . ' ' . ($months[$monthEng] ?? $monthEng) . ' ' . $tx->transaction_date->format('Y');
 
-            $lines[] = ($i + 1) . ". {$tx->description} — {$type}Rp{$amount} — {$category} — {$wallet} — {$date}";
+            $emojiNum = $numberEmojis[$i] ?? ($i + 1) . '.';
+
+            $lines[] = "{$emojiNum} *{$tx->description}*";
+            $lines[] = "   {$sign}Rp{$amount} • {$wallet} • {$dateStr}";
+            $lines[] = "   🏷️ {$category}";
+            $lines[] = "";
+
             $candidateData[] = [
-                'id' => $tx->id,
+                'id'          => $tx->id,
                 'description' => $tx->description,
-                'amount' => $tx->amount,
-                'category' => $category,
-                'wallet' => $wallet,
+                'amount'      => $tx->amount,
+                'category'    => $category,
+                'wallet'      => $wallet,
             ];
         }
 
-        $lines[] = "\nYang mana? Balas nomor atau jelaskan lebih detail.";
+        $lines[] = "Balas dengan *nomor* (misal: *1*) atau deskripsi yang lebih spesifik.";
 
         return [
-            'text' => implode("\n", $lines),
+            'text'       => implode("\n", $lines),
             'candidates' => $candidateData,
         ];
     }

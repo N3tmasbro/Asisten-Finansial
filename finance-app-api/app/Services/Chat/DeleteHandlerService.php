@@ -86,15 +86,25 @@ class DeleteHandlerService
      */
     public function requestConfirmation(Transaction $transaction): array
     {
-        $amount = number_format($transaction->amount, 0, ',', '.');
-        $type = $transaction->type->value === 'income' ? '+' : '-';
-        $wallet = $transaction->wallet->name ?? 'Unknown';
-        $category = $transaction->category->name ?? 'Unknown';
-        $date = $transaction->transaction_date->format('j M Y');
+        $amount   = number_format($transaction->amount, 0, ',', '.');
+        $isIncome = $transaction->type->value === 'income';
+        $sign     = $isIncome ? '➕' : '➖';
+        $wallet   = $transaction->wallet->name ?? 'Cash';
+        $category = $transaction->category->name ?? 'Lainnya';
+        $months   = [
+            'Jan' => 'Jan', 'Feb' => 'Feb', 'Mar' => 'Mar', 'Apr' => 'Apr',
+            'May' => 'Mei', 'Jun' => 'Jun', 'Jul' => 'Jul', 'Aug' => 'Agu',
+            'Sep' => 'Sep', 'Oct' => 'Okt', 'Nov' => 'Nov', 'Dec' => 'Des',
+        ];
+        $monthEng = $transaction->transaction_date->format('M');
+        $dateStr  = $transaction->transaction_date->format('j') . ' ' . ($months[$monthEng] ?? $monthEng) . ' ' . $transaction->transaction_date->format('Y');
 
-        $text = "Aku menemukan transaksi ini:\n\n"
-            . "{$transaction->description} — {$type}Rp{$amount} — {$category} — {$wallet} — {$date}\n\n"
-            . "Yakin ingin menghapusnya?";
+        $text = "⚠️ *Konfirmasi Hapus Transaksi*\n\n"
+            . "{$sign} *{$transaction->description}*\n"
+            . "   Rp{$amount} • {$wallet} • {$dateStr}\n"
+            . "   🏷️ {$category}\n\n"
+            . "Yakin ingin menghapus transaksi ini?\n"
+            . "Balas *ya* untuk menghapus atau *tidak* untuk membatalkan.";
 
         return [
             'text' => $text,

@@ -7,16 +7,17 @@ use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Repositories\TransactionRepository;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Handles read-only inspection requests via WhatsApp.
  *
- * No Gemini API call — uses lightweight keyword matching.
- * All returned data comes from the database (AI never invents values).
+ * Uses lightweight keyword & regex matching + date/limit parsing.
+ * All returned data comes from the database.
  *
  * Supported:
- * - Recent transactions
+ * - Recent / filtered transactions (by date range, limit 10/20/all, etc.)
  * - Wallet balance (single or all)
  * - Transaction detail
  * - Budget status
@@ -26,15 +27,11 @@ use Illuminate\Support\Facades\Log;
  */
 class InspectHandlerService
 {
-    // ─── Keyword groups — any match triggers the handler ──────────────────────
-
     private const WALLET_KEYWORDS = [
-        // explicit dompet/wallet
         'cek dompet', 'lihat dompet', 'tampil dompet', 'show dompet',
         'dompet saya', 'dompet ku', 'dompetku', 'dompetnya',
         'cek wallet', 'lihat wallet', 'tampil wallet',
         'daftar wallet', 'list wallet', 'wallet apa aja', 'wallet saya', 'wallet ku', 'semua wallet',
-        // saldo umbrella terms
         'saldo semua', 'saldo total', 'semua saldo', 'total saldo',
         'berapa saldo', 'saldo gue', 'saldo gw', 'saldo aku',
     ];
@@ -51,20 +48,13 @@ class InspectHandlerService
         'daftar kategori', 'list kategori', 'kategori apa aja', 'kategori saya', 'semua kategori',
     ];
 
-    private const TRANSACTION_KEYWORDS = [
-        'cek transaksi', 'lihat transaksi', 'tampil transaksi',
-        'transaksi saya', 'transaksi ku', 'transaksi terbaru', 'transaksi terakhir',
-        'riwayat', 'history', 'transaksi hari ini', 'apa aja yang dicatat',
-        'cek riwayat', 'lihat riwayat',
-    ];
-
     public function __construct(
         private TransactionRepository $transactionRepo,
         private TransactionCandidateResolver $candidateResolver,
     ) {}
 
     /**
-     * Handle an inspection request. Uses keyword matching — no AI call.
+     * Handle an inspection request.
      */
     public function handle(User $user, string $message): string
     {
@@ -72,7 +62,6 @@ class InspectHandlerService
 
         try {
             // ── Budget (specific category) — check before generic budget ──
-            // e.g. "budget makan", "cek budget makanan bulan ini"
             if (preg_match('/(?:cek\s+|lihat\s+)?budget\s+([a-zA-Z0-9\s]+?)(?:\s+bulan\s+ini)?$/i', $msg, $matches)) {
                 $categoryHint = trim($matches[1]);
                 $skip = ['apa', 'berapa', 'gimana', 'saya', 'ku', 'aku', 'semua', 'list', 'daftar'];
@@ -112,8 +101,8 @@ class InspectHandlerService
                 return $this->getTransactionDetail($user, trim($hint));
             }
 
-            // ── Recent Transactions (explicit or fallback) ────────────────
-            return $this->listRecentTransactions($user);
+            // ── Transactions (recent / filtered by range or limit) ─────────
+            return $this->listRecentTransactions($user, $msg);
 
         } catch (\Exception $e) {
             Log::error('Inspect handler error', [
@@ -127,14 +116,30 @@ class InspectHandlerService
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    //  Formatters — Mobile-friendly (NO fixed-width ASCII table)
+    //  Transaction List Handler (with Date-Range & Limit support)
     // ─────────────────────────────────────────────────────────────────────────
 
-    private function listRecentTransactions(User $user): string
+    private function listRecentTransactions(User $user, string $msg = ''): string
     {
-        $transactions = $this->transactionRepo->recent($user->id, 7);
+        $limit     = $this->parseLimit($msg);
+        $dateRange = $this->parseDateRange($msg);
+
+        $query = Transaction::where('user_id', $user->id)
+            ->with(['category:id,name,icon', 'wallet:id,name']);
+
+        if ($dateRange) {
+            $query->whereBetween('transaction_date', [$dateRange['from'], $dateRange['to']]);
+        }
+
+        $transactions = $query->orderByDesc('transaction_date')
+            ->orderByDesc('created_at')
+            ->limit($limit)
+            ->get();
 
         if ($transactions->isEmpty()) {
+            if ($dateRange) {
+                return "Tidak ada transaksi pada periode *{$dateRange['label']}* 📝";
+            }
             return "Belum ada transaksi yang dicatat 📝\n\nCoba catat dulu, misalnya:\n• _makan siang 35rb_\n• _terima gaji 8jt_";
         }
 
@@ -144,9 +149,19 @@ class InspectHandlerService
             'Sep' => 'Sep', 'Oct' => 'Okt', 'Nov' => 'Nov', 'Dec' => 'Des',
         ];
 
-        $lines = ["📋 *Transaksi Terakhir*\n"];
+        // Build header title
+        if ($dateRange) {
+            $title = "📋 *Transaksi ({$dateRange['label']})*";
+        } elseif ($limit === 100) {
+            $title = "📋 *Semua Transaksi*";
+        } elseif ($limit !== 7) {
+            $title = "📋 *{$limit} Transaksi Terakhir*";
+        } else {
+            $title = "📋 *Transaksi Terakhir*";
+        }
 
-        $index = 1;
+        $lines = [$title . "\n"];
+
         foreach ($transactions as $tx) {
             $isIncome = $tx->type->value === 'income';
             $sign     = $isIncome ? '➕' : '➖';
@@ -161,12 +176,115 @@ class InspectHandlerService
             $lines[] = "   {$amount} • {$wallet} • {$date}";
             $lines[] = "   🏷️ {$category}";
             $lines[] = "";
-
-            if ($index++ >= 7) break;
         }
+
+        // Options footer requested by user
+        $lines[] = "〰️〰️〰️";
+        $lines[] = "💡 *Opsi lihat transaksi:*";
+        $lines[] = "  _transaksi 10-20 agustus_";
+        $lines[] = "  _tampilkan 10 transaksi_";
+        $lines[] = "  _tampilkan 20 transaksi_";
+        $lines[] = "  _semua transaksi_";
 
         return rtrim(implode("\n", $lines));
     }
+
+    /**
+     * Parse date range from message.
+     */
+    private function parseDateRange(string $msg): ?array
+    {
+        $msg = mb_strtolower(trim($msg));
+        $year = (int) date('Y');
+
+        $monthMap = [
+            'jan' => 1, 'januari' => 1,
+            'feb' => 2, 'februari' => 2,
+            'mar' => 3, 'maret' => 3,
+            'apr' => 4, 'april' => 4,
+            'mei' => 5, 'may' => 5,
+            'jun' => 6, 'juni' => 6,
+            'jul' => 7, 'juli' => 7,
+            'agu' => 8, 'agustus' => 8, 'aug' => 8, 'agust' => 8,
+            'sep' => 9, 'september' => 9, 'sept' => 9,
+            'okt' => 10, 'oktober' => 10, 'oct' => 10,
+            'nov' => 11, 'november' => 11,
+            'des' => 12, 'desember' => 12, 'dec' => 12,
+        ];
+
+        // 1. Pattern: "10-20 agustus" or "10 - 20 agustus 2026"
+        if (preg_match('/(\d{1,2})\s*[-–—]\s*(\d{1,2})\s+([a-zA-Z]+)(?:\s+(\d{4}))?/i', $msg, $m)) {
+            $mNum = $monthMap[mb_strtolower($m[3])] ?? null;
+            if ($mNum) {
+                $y = isset($m[4]) ? (int) $m[4] : $year;
+                $from = sprintf('%04d-%02d-%02d', $y, $mNum, (int) $m[1]);
+                $to   = sprintf('%04d-%02d-%02d', $y, $mNum, (int) $m[2]);
+                $monthName = ucfirst($m[3]);
+                return ['from' => $from, 'to' => $to, 'label' => "{$m[1]} - {$m[2]} {$monthName}"];
+            }
+        }
+
+        // 2. Pattern: "10 agustus sampai 20 agustus" or "10 agustus s/d 20 agustus"
+        if (preg_match('/(\d{1,2})\s+([a-zA-Z]+)\s+(?:sampai|ke|s\/d|hingga|-)\s+(\d{1,2})\s+([a-zA-Z]+)(?:\s+(\d{4}))?/i', $msg, $m)) {
+            $m1 = $monthMap[mb_strtolower($m[2])] ?? null;
+            $m2 = $monthMap[mb_strtolower($m[4])] ?? null;
+            if ($m1 && $m2) {
+                $y = isset($m[5]) ? (int) $m[5] : $year;
+                $from = sprintf('%04d-%02d-%02d', $y, $m1, (int) $m[1]);
+                $to   = sprintf('%04d-%02d-%02d', $y, $m2, (int) $m[3]);
+                $monthName1 = ucfirst($m[2]);
+                $monthName2 = ucfirst($m[4]);
+                return ['from' => $from, 'to' => $to, 'label' => "{$m[1]} {$monthName1} - {$m[3]} {$monthName2}"];
+            }
+        }
+
+        // 3. Predefined periods
+        if (str_contains($msg, 'bulan ini')) {
+            return ['from' => date('Y-m-01'), 'to' => date('Y-m-d'), 'label' => 'Bulan Ini'];
+        }
+        if (str_contains($msg, 'bulan lalu')) {
+            return [
+                'from' => date('Y-m-01', strtotime('first day of last month')),
+                'to'   => date('Y-m-t', strtotime('last month')),
+                'label' => 'Bulan Lalu',
+            ];
+        }
+        if (str_contains($msg, 'minggu ini')) {
+            return ['from' => date('Y-m-d', strtotime('monday this week')), 'to' => date('Y-m-d'), 'label' => 'Minggu Ini'];
+        }
+        if (str_contains($msg, 'kemarin')) {
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            return ['from' => $yesterday, 'to' => $yesterday, 'label' => 'Kemarin'];
+        }
+        if (str_contains($msg, 'hari ini')) {
+            $today = date('Y-m-d');
+            return ['from' => $today, 'to' => $today, 'label' => 'Hari Ini'];
+        }
+
+        return null;
+    }
+
+    /**
+     * Parse limit from message.
+     */
+    private function parseLimit(string $msg): int
+    {
+        $msg = mb_strtolower(trim($msg));
+        if (str_contains($msg, 'semua')) {
+            return 100;
+        }
+        if (preg_match('/(\d{1,3})\s*(?:transaksi|riwayat|data)?/i', $msg, $m)) {
+            $val = (int) $m[1];
+            if ($val > 0 && $val <= 100) {
+                return $val;
+            }
+        }
+        return 7;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Other Formatters
+    // ─────────────────────────────────────────────────────────────────────────
 
     private function getWalletBalance(User $user, string $walletHint): string
     {
