@@ -505,42 +505,42 @@ class ChatOrchestratorService
     {
         $sampleSets = [
             'transaction' => [
-                '• *"Bulan ini habis berapa?"*',
-                '• *"Koreksi yang tadi jadi 25rb"*',
-                '• *"Saldo cash berapa?"*',
+                '_Bulan ini habis berapa?_',
+                '_Koreksi yang tadi jadi 25rb_',
+                '_Cek dompet_',
             ],
             'query' => [
-                '• *"Pengeluaran makan bulan ini"*',
-                '• *"Kapan saldo gue habis?"*',
-                '• *"Tips hemat"*',
+                '_Pengeluaran makan bulan ini_',
+                '_Bandingkan bulan ini sama bulan lalu_',
+                '_Kapan saldo gue habis?_',
             ],
             'manage' => [
-                '• *"Cash gw 1jt"*',
-                '• *"Buat wallet GoPay"*',
-                '• *"Daftar wallet"*',
+                '_Buat wallet GoPay_',
+                '_Buat budget Makan 1jt_',
+                '_Cek dompet_',
             ],
             'inspect' => [
-                '• *"Beli nasi goreng 15rb"*',
-                '• *"Riwayat transaksi"*',
-                '• *"Budget makan bulan ini"*',
+                '_Beli nasi goreng 15rb_',
+                '_Cek budget_',
+                '_Bulan ini habis berapa?_',
             ],
             'default' => [
-                '• *"Beli kopi 20rb"*',
-                '• *"Bulan ini habis berapa?"*',
-                '• *"Saldo semua wallet"*',
+                '_Beli kopi 20rb_',
+                '_Bulan ini habis berapa?_',
+                '_Cek dompet_',
             ],
         ];
 
         $key = match ($intent) {
-            MessageIntent::AddTransaction => 'transaction',
-            MessageIntent::QueryReport => 'query',
-            MessageIntent::ManageRecords => 'manage',
-            MessageIntent::InspectRecords => 'inspect',
-            default => 'default',
+            MessageIntent::AddTransaction  => 'transaction',
+            MessageIntent::QueryReport     => 'query',
+            MessageIntent::ManageRecords   => 'manage',
+            MessageIntent::InspectRecords  => 'inspect',
+            default                        => 'default',
         };
 
-        $lines = $sampleSets[$key];
-        return "💡 *Contoh perintah lain:*\n" . implode("\n", $lines);
+        $tips = implode("\n", array_map(fn($l) => "  {$l}", $sampleSets[$key]));
+        return "\n〰️〰️〰️\n💡 *Coba juga:*\n{$tips}";
     }
 
     // ─────────────────────────────────────────────────────
