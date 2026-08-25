@@ -105,24 +105,50 @@ class InspectHandlerService
 
     private function listRecentTransactions(User $user): string
     {
-        $transactions = $this->transactionRepo->recent($user->id, 5);
+        $transactions = $this->transactionRepo->recent($user->id, 8);
 
         if ($transactions->isEmpty()) {
             return "Belum ada transaksi yang dicatat 📝";
         }
 
-        $lines = ["📋 Transaksi terakhir kamu:\n"];
+        $months = [
+            'Jan' => 'Jan', 'Feb' => 'Feb', 'Mar' => 'Mar', 'Apr' => 'Apr',
+            'May' => 'Mei', 'Jun' => 'Jun', 'Jul' => 'Jul', 'Aug' => 'Agu',
+            'Sep' => 'Sep', 'Oct' => 'Okt', 'Nov' => 'Nov', 'Dec' => 'Des'
+        ];
 
-        foreach ($transactions as $i => $tx) {
-            $amount = number_format($tx->amount, 0, ',', '.');
-            $type = $tx->type->value === 'income' ? '+' : '-';
-            $date = $tx->transaction_date->format('j M');
-            $category = $tx->category->name ?? 'Unknown';
+        $header = sprintf(
+            "%-23s | %-13s | %-6s | %-11s | %-9s | %s",
+            "TRANSAKSI", "KATEGORI", "DOMPET", "TANGGAL", "JUMLAH", "STATUS"
+        );
 
-            $lines[] = ($i + 1) . ". {$tx->description} — {$type}Rp{$amount} [{$category}] — {$date}";
+        $divider = "------------------------+---------------+--------+-------------+-----------+-------";
+
+        $rows = [];
+        foreach ($transactions as $tx) {
+            $desc = mb_strimwidth($tx->description, 0, 23, '');
+            $categoryName = $tx->category->name ?? 'Lainnya';
+            $category = mb_strimwidth($categoryName, 0, 13, '');
+            $walletName = $tx->wallet->name ?? 'Cash';
+            $wallet = mb_strimwidth($walletName, 0, 6, '');
+
+            $monthEng = $tx->transaction_date->format('M');
+            $monthIndo = $months[$monthEng] ?? $monthEng;
+            $date = $tx->transaction_date->format('j') . ' ' . $monthIndo . ' ' . $tx->transaction_date->format('Y');
+
+            $sign = $tx->type->value === 'income' ? '+' : '-';
+            $amount = $sign . 'Rp' . number_format($tx->amount, 0, ',', '.');
+
+            $confidence = $tx->ai_confidence ? round($tx->ai_confidence * 100) : 95;
+            $status = $confidence . '%';
+
+            $rows[] = sprintf(
+                "%-23s | %-13s | %-6s | %-11s | %-9s | %s",
+                $desc, $category, $wallet, $date, $amount, $status
+            );
         }
 
-        return implode("\n", $lines);
+        return "```\n" . $header . "\n" . $divider . "\n" . implode("\n", $rows) . "\n```";
     }
 
     private function getWalletBalance(User $user, string $walletHint): string
