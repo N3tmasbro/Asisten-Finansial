@@ -511,40 +511,31 @@ export default function TransactionsPage() {
               </div>
             )}
 
-            {/* Pagination Controls (BUG-008) */}
+            {/* Pagination Controls */}
             {totalItems > 0 && (
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '16px 20px', background: 'var(--bg-secondary)',
-                borderTop: '1px solid var(--border-subtle)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 md:px-5 md:py-4 bg-[var(--bg-secondary)] border-t border-[var(--border-subtle)]">
+                <div className="flex items-center gap-2 text-[13px] text-[var(--text-secondary)] w-full md:w-auto justify-center md:justify-start">
                   <span>Tampilkan</span>
                   <select
                     value={perPage}
                     onChange={(e) => setPerPage(Number(e.target.value))}
-                    style={{ padding: '4px 8px', borderRadius: 6, height: 32, fontSize: 13 }}
+                    className="px-2 py-1 rounded-md h-8 text-[13px] bg-white border border-[var(--border)] outline-none"
                   >
                     {[10, 15, 25, 50].map((n) => (
                       <option key={n} value={n}>{n}</option>
                     ))}
                   </select>
-                  <span>baris</span>
                 </div>
 
-                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                  Menampilkan {totalItems === 0 ? 0 : (page - 1) * perPage + 1} - {Math.min(page * perPage, totalItems)} dari {totalItems} transaksi
-                </div>
-
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <div className="flex gap-2 items-center w-full md:w-auto justify-center md:justify-end overflow-x-auto pb-2 md:pb-0">
                   <button
                     type="button"
-                    className="btn-secondary"
+                    className="btn-secondary whitespace-nowrap"
                     onClick={() => setPage(p => Math.max(p - 1, 1))}
                     disabled={page === 1}
                     style={{ padding: '6px 12px', fontSize: 12, height: 32, opacity: page === 1 ? 0.5 : 1, cursor: page === 1 ? 'default' : 'pointer' }}
                   >
-                    ◀ Sebelumnya
+                    ◀
                   </button>
                   
                   {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -554,8 +545,8 @@ export default function TransactionsPage() {
                       const showDots = prev && p - prev > 1;
 
                       return (
-                        <div key={p} style={{ display: 'flex', gap: 6 }}>
-                          {showDots && <span style={{ padding: '6px 8px', color: 'var(--text-tertiary)' }}>...</span>}
+                        <div key={p} className="flex gap-2">
+                          {showDots && <span className="px-1 text-[var(--text-tertiary)]">...</span>}
                           <button
                             type="button"
                             onClick={() => setPage(p)}
@@ -575,12 +566,12 @@ export default function TransactionsPage() {
 
                   <button
                     type="button"
-                    className="btn-secondary"
+                    className="btn-secondary whitespace-nowrap"
                     onClick={() => setPage(p => Math.min(p + 1, totalPages))}
                     disabled={page === totalPages}
                     style={{ padding: '6px 12px', fontSize: 12, height: 32, opacity: page === totalPages ? 0.5 : 1, cursor: page === totalPages ? 'default' : 'pointer' }}
                   >
-                    Selanjutnya ▶
+                    ▶
                   </button>
                 </div>
               </div>
