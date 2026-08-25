@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { formatRupiah, formatPercent } from '../../lib/utils';
 import api from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { getCategoryStyle } from '../../lib/categoryColors';
+import StatCard from '../../components/StatCard';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -71,57 +73,88 @@ export default function DashboardPage() {
     return list.map(c => ({ ...c, percentage: Math.round((c.total / (totalExpense || 1)) * 100) }));
   })();
 
+  const filters = [
+    { key: 'this_month', label: 'Bulan Ini' },
+    { key: 'last_month', label: 'Bulan Lalu' },
+    { key: 'this_week', label: 'Minggu Ini' },
+  ];
+
+  const walletColors = {
+    cash: 'var(--cat-food-bg)',
+    bank: 'var(--accent-teal-bg)',
+    ewallet: 'var(--cat-transport-bg)',
+    savings: 'var(--cat-bonus-bg)',
+  };
+  const walletIcons = { cash: '💵', bank: '🏦', ewallet: '📱', savings: '🏧' };
+
   if (loading) {
     return (
-      <div className="animate-fade-in flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="text-4xl mb-3 animate-pulse">📊</div>
-          <p className="text-gray-400">Memuat dashboard...</p>
+      <div style={{ padding: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }} className="animate-pulse">📊</div>
+          <p style={{ color: 'var(--text-secondary)' }}>Memuat dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="animate-fade-in">
+    <div style={{ padding: 32, minHeight: '100vh', backgroundColor: 'var(--bg-base)' }}>
       {/* Page Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Dashboard</h1>
-          <p className="text-gray-400 text-sm mt-1">Ringkasan keuangan kamu bulan ini</p>
+          <h1 className="font-poppins" style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', margin: 0, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
+            Dashboard
+          </h1>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+            Visualisasi dan insight dari transaksi yang kamu catat lewat WhatsApp
+          </p>
         </div>
-        <div className="flex gap-2">
-          {['this_month', 'last_month', 'this_week'].map((p) => (
+        <div style={{ display: 'flex', gap: 6 }}>
+          {filters.map(f => (
             <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150
-                ${period === p
-                  ? 'bg-indigo-500/20 text-indigo-400'
-                  : 'text-gray-400 hover:text-white hover:bg-white/[0.03]'
-                }`}
-            >
-              {p === 'this_month' ? 'Bulan Ini' : p === 'last_month' ? 'Bulan Lalu' : 'Minggu Ini'}
-            </button>
+              key={f.key}
+              onClick={() => setPeriod(f.key)}
+              style={{
+                padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)',
+                background: period === f.key ? 'var(--color-accent)' : 'var(--bg-card)',
+                color: period === f.key ? 'var(--color-accent-text)' : 'var(--text-secondary)',
+                fontSize: 13, fontWeight: period === f.key ? 600 : 400,
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}
+            >{f.label}</button>
           ))}
         </div>
       </div>
 
+      {/* WhatsApp Banner */}
+      <div className="whatsapp-primary-banner">
+        <div className="whatsapp-primary-icon">💬</div>
+        <div><strong>Catat transaksi dari WhatsApp</strong><span>Kirim "beli kopi 20rb dan parkir 5rb" — AI akan memisahkan dan mencatat keduanya otomatis.</span></div>
+        <div className="whatsapp-primary-tag">Interface utama</div>
+      </div>
+
       {/* WhatsApp Verification Warning Banner */}
       {user && !phoneVerified && (
-        <div className="mb-8 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 flex flex-col sm:flex-row items-center gap-4 animate-slide-up">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🔐</span>
-            <div>
-              <p className="text-sm font-semibold text-amber-400">
-                WhatsApp Belum Terverifikasi
-              </p>
-              <p className="text-xs text-gray-400">
-                Hubungkan nomor WhatsApp kamu agar bot dapat mengenali pesanmu dan mencatat transaksi secara otomatis.
-              </p>
-            </div>
+        <div style={{
+          marginBottom: 22, padding: '14px 16px', borderRadius: 10,
+          border: '1px solid var(--accent-amber-bg)', backgroundColor: 'var(--accent-amber-bg)',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <span style={{ fontSize: 20 }}>🔐</span>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent-amber)', margin: 0 }}>
+              WhatsApp Belum Terverifikasi
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '2px 0 0' }}>
+              Hubungkan nomor WhatsApp kamu agar bot dapat mengenali pesanmu dan mencatat transaksi secara otomatis.
+            </p>
           </div>
-          <a href="/settings" className="sm:ml-auto btn-primary py-2 px-4 text-xs font-semibold no-underline whitespace-nowrap">
+          <a href="/settings" style={{
+            padding: '7px 16px', borderRadius: 8, border: 'none',
+            background: 'var(--color-accent)', color: 'var(--color-accent-text)',
+            fontSize: 13, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap',
+          }}>
             Verifikasi Sekarang →
           </a>
         </div>
@@ -129,27 +162,28 @@ export default function DashboardPage() {
 
       {/* Onboarding Card — shown when no data yet */}
       {!loading && wallets.length === 0 && transactions.length === 0 && (
-        <div className="mb-8 p-6 rounded-2xl border border-indigo-500/20 animate-slide-up"
-          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.05), rgba(139,92,246,0.05))' }}>
-          <div className="flex items-start gap-4">
-            <div className="text-4xl">🚀</div>
+        <div className="card" style={{
+          marginBottom: 22, padding: 24, borderLeft: '3px solid var(--teal)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+            <div style={{ fontSize: 32 }}>🚀</div>
             <div>
-              <h3 className="text-lg font-bold text-white mb-2">Selamat datang di Asisten Finansial!</h3>
-              <p className="text-sm text-gray-400 mb-4 leading-relaxed">
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px' }}>Selamat datang di Asisten Finansial!</h3>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
                 Belum ada data keuangan. Mulai dengan langkah-langkah berikut:
               </p>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold">1</span>
-                  <span className="text-gray-300">Buat dompet pertamamu di halaman <a href="/wallets" className="text-indigo-400 hover:text-indigo-300 font-medium">Dompet</a></span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: 'var(--accent-teal-bg)', color: 'var(--accent-teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>1</span>
+                  <span style={{ color: 'var(--text-primary)' }}>Buat dompet pertamamu di halaman <a href="/wallets" style={{ color: 'var(--teal)', fontWeight: 600 }}>Dompet</a></span>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold">2</span>
-                  <span className="text-gray-300">Kirim pesan ke WhatsApp Bot, contoh: <span className="text-white font-medium">"Beli kopi 15rb"</span></span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: 'var(--accent-teal-bg)', color: 'var(--accent-teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>2</span>
+                  <span style={{ color: 'var(--text-primary)' }}>Kirim pesan ke WhatsApp Bot, contoh: <strong>"Beli kopi 15rb"</strong></span>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold">3</span>
-                  <span className="text-gray-300">Atau <a href="/transactions" className="text-indigo-400 hover:text-indigo-300 font-medium">tambah transaksi manual</a> dari web</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: 'var(--accent-teal-bg)', color: 'var(--accent-teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>3</span>
+                  <span style={{ color: 'var(--text-primary)' }}>Atau <a href="/transactions" style={{ color: 'var(--teal)', fontWeight: 600 }}>tambah transaksi manual</a> dari web</span>
                 </div>
               </div>
             </div>
@@ -157,134 +191,154 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-        <div className="stat-card accent">
-          <p className="text-xs font-medium text-gray-400 mb-1">Total Saldo</p>
-          <p className="text-2xl font-extrabold tracking-tight">{formatRupiah(totalBalance)}</p>
-          <p className="text-xs text-gray-500 mt-2">{wallets.length} dompet aktif</p>
-        </div>
-
-        <div className="stat-card income">
-          <p className="text-xs font-medium text-gray-400 mb-1">Pemasukan</p>
-          <p className="text-2xl font-extrabold tracking-tight text-emerald-400">
-            {formatRupiah(totalIncome)}
-          </p>
-          <p className="text-xs text-gray-500 mt-2">Bulan ini</p>
-        </div>
-
-        <div className="stat-card expense">
-          <p className="text-xs font-medium text-gray-400 mb-1">Pengeluaran</p>
-          <p className="text-2xl font-extrabold tracking-tight text-rose-400">
-            {formatRupiah(totalExpense)}
-          </p>
-          <p className="text-xs text-gray-500 mt-2">Bulan ini</p>
-        </div>
-
-        <div className="stat-card warning">
-          <p className="text-xs font-medium text-gray-400 mb-1">Transaksi</p>
-          <p className="text-2xl font-extrabold tracking-tight">
-            {transactions.length}
-          </p>
-          <p className="text-xs text-gray-500 mt-2">total tercatat</p>
-        </div>
+      {/* Stat Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
+        <StatCard title="Total Saldo" value={formatRupiah(totalBalance)} subtitle={`${wallets.length} dompet aktif`} color="teal" icon={
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 12V22H4V12" /><path d="M22 7H2v5h20V7z" /><path d="M12 22V7" />
+            <path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" />
+          </svg>
+        } />
+        <StatCard title="Pemasukan" value={formatRupiah(totalIncome)} subtitle="Bulan ini" color="green" icon={
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
+          </svg>
+        } />
+        <StatCard title="Pengeluaran" value={formatRupiah(totalExpense)} subtitle="Bulan ini" color="red" icon={
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" />
+          </svg>
+        } />
+        <StatCard title="Transaksi" value={String(transactions.length)} subtitle="total tercatat" color="amber" icon={
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
+            <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+          </svg>
+        } />
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Recent Transactions + Category Breakdown */}
+      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 16, marginBottom: 28 }}>
         {/* Recent Transactions */}
-        <div className="lg:col-span-2 glass-card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold">Transaksi Terbaru</h2>
-            <a href="/transactions" className="text-xs text-indigo-400 hover:text-indigo-300 font-medium">
+        <div className="card" style={{ padding: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Transaksi Terbaru</h2>
+            <a href="/transactions" style={{ background: 'none', border: 'none', color: 'var(--color-accent)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
               Lihat Semua →
             </a>
           </div>
           {transactions.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="text-gray-400 text-sm">Belum ada transaksi.</p>
-              <p className="text-gray-500 text-xs mt-1">Kirim pesan ke WhatsApp untuk mencatat!</p>
+            <div style={{ padding: '32px 0', textAlign: 'center' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Belum ada transaksi.</p>
+              <p style={{ color: 'var(--text-tertiary)', fontSize: 12, marginTop: 4 }}>Kirim pesan ke WhatsApp untuk mencatat!</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {transactions.slice(0, 7).map((tx) => (
-                <div key={tx.id}
-                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/[0.02] transition-all duration-150">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
-                    style={{ background: tx.type === 'income' ? 'rgba(16,185,129,0.1)' : 'rgba(244,63,94,0.1)' }}>
-                    {tx.category?.icon || '📦'}
+            <div>
+              {transactions.slice(0, 7).map((tx) => {
+                const cat = getCategoryStyle(tx.category?.name || 'Lainnya');
+                return (
+                  <div
+                    key={tx.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '10px 8px', borderRadius: 8, minHeight: 56,
+                      borderBottom: '1px solid var(--border-subtle)',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 8, fontSize: 18,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: cat.bg, flexShrink: 0,
+                    }}>
+                      {tx.category?.icon || '📦'}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {tx.description}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{tx.category?.name || '-'} · {tx.wallet?.name || '-'}</div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: tx.type === 'income' ? 'var(--color-income)' : 'var(--color-expense)' }}>
+                        {tx.type === 'income' ? '+' : '-'}{formatRupiah(tx.amount)}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                        {new Date(tx.transaction_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                      </div>
+                    </div>
+                    {!tx.is_reviewed && (
+                      <span className="badge-warning" style={{ marginLeft: 4 }}>⚠️</span>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{tx.description}</p>
-                    <p className="text-xs text-gray-500">{tx.category?.name} · {tx.wallet?.name}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-bold ${tx.type === 'income' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {tx.type === 'income' ? '+' : '-'}{formatRupiah(tx.amount)}
-                    </p>
-                    <p className="text-xs text-gray-500">{new Date(tx.transaction_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
-                  </div>
-                  {!tx.is_reviewed && (
-                    <span className="badge-warning ml-1">⚠️</span>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
 
         {/* Category Breakdown */}
-        <div className="glass-card">
-          <h2 className="text-lg font-bold mb-4">Pengeluaran per Kategori</h2>
+        <div className="card" style={{ padding: 24 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 16px' }}>
+            Pengeluaran per Kategori
+          </h2>
           {categoryBreakdown.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-4">Belum ada data.</p>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14, textAlign: 'center', padding: '16px 0' }}>Belum ada data.</p>
           ) : (
-            <div className="space-y-4">
-              {categoryBreakdown.map((cat, i) => (
-                <div key={i}>
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <span>{cat.category_icon}</span>
-                      <span className="text-sm font-medium">{cat.category_name}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {categoryBreakdown.map((cat, i) => {
+                const style = getCategoryStyle(cat.category_name);
+                return (
+                  <div key={i}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <span style={{ fontSize: 13 }}>{cat.category_icon}</span>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{cat.category_name}</span>
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{formatRupiah(cat.total)}</span>
                     </div>
-                    <span className="text-sm font-bold">{formatRupiah(cat.total)}</span>
+                    <div style={{ height: 5, backgroundColor: 'var(--border)', borderRadius: 3, overflow: 'hidden', marginBottom: 2 }}>
+                      <div style={{ height: '100%', width: `${cat.percentage}%`, backgroundColor: style.icon, borderRadius: 3, transition: 'width 0.5s ease' }} />
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{cat.percentage}% dari total</div>
                   </div>
-                  <div className="progress-bar">
-                    <div
-                      className={`progress-fill ${cat.percentage > 80 ? 'danger' : cat.percentage > 50 ? 'warning' : ''}`}
-                      style={{ width: `${cat.percentage}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-0.5">{cat.percentage}% dari total</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
       </div>
 
-      {/* Wallets Row */}
-      <div className="mt-6">
-        <h2 className="text-lg font-bold mb-4">Dompet</h2>
+      {/* Wallets */}
+      <div>
+        <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 14px' }}>Dompet</h2>
         {wallets.length === 0 ? (
-          <p className="text-gray-400 text-sm">Belum ada dompet.</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Belum ada dompet.</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div style={{ display: 'flex', gap: 16 }}>
             {wallets.map((wallet, i) => (
-              <div key={wallet.id || i} className="glass-card">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
-                    style={{ background: wallet.type === 'cash' ? 'rgba(16,185,129,0.1)' : wallet.type === 'bank' ? 'rgba(59,130,246,0.1)' : 'rgba(168,85,247,0.1)' }}>
-                    {wallet.type === 'cash' ? '💵' : wallet.type === 'bank' ? '🏦' : '📱'}
+              <div key={wallet.id || i} className="card" style={{ padding: 20, flex: 1, transition: 'box-shadow 0.2s, transform 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: 8,
+                    backgroundColor: walletColors[wallet.type] || walletColors.cash,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18,
+                  }}>
+                    {walletIcons[wallet.type] || '💳'}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-white">{wallet.name}</p>
-                    <p className="text-xs text-gray-500 capitalize">{wallet.type}</p>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{wallet.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textTransform: 'capitalize' }}>{wallet.type === 'ewallet' ? 'E-wallet' : wallet.type}</div>
                   </div>
                 </div>
-                <p className={`text-xl font-extrabold tracking-tight ${wallet.balance < 0 ? 'text-rose-400' : ''}`}>
-                  {formatRupiah(wallet.balance)}
-                </p>
+                <div className="font-poppins" style={{ fontSize: 20, fontWeight: 700, color: wallet.balance < 0 ? 'var(--color-expense)' : 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+                  {formatRupiah(wallet.balance || 0)}
+                </div>
               </div>
             ))}
           </div>
@@ -293,18 +347,24 @@ export default function DashboardPage() {
 
       {/* Review Alert */}
       {reviewCount > 0 && (
-        <div className="mt-6 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 flex items-center gap-3 animate-slide-up">
-          <span className="text-2xl">⚠️</span>
-          <div>
-            <p className="text-sm font-semibold text-amber-400">
+        <div style={{
+          marginTop: 24, padding: '14px 16px', borderRadius: 10,
+          border: '1px solid var(--accent-amber-bg)', backgroundColor: 'var(--accent-amber-bg)',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <span style={{ fontSize: 20 }}>⚠️</span>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent-amber)', margin: 0 }}>
               {reviewCount} transaksi perlu direview
             </p>
-            <p className="text-xs text-gray-400">
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '2px 0 0' }}>
               Beberapa transaksi dari AI punya confidence rendah. Cek di halaman transaksi.
             </p>
           </div>
-          <a href="/transactions?needs_review=true"
-            className="ml-auto btn-secondary text-xs">
+          <a href="/transactions?needs_review=true" style={{
+            padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)',
+            background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, textDecoration: 'none',
+          }}>
             Review →
           </a>
         </div>

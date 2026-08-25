@@ -6,9 +6,9 @@ export const metadata = {
 
 export default function DashboardLayout({ children }) {
   return (
-    <div className="flex min-h-screen">
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar />
-      <main className="ml-64 flex-1 p-8 min-h-screen">
+      <main style={{ marginLeft: 200, flex: 1, minHeight: '100vh', backgroundColor: 'var(--bg-base)' }}>
         {children}
       </main>
     </div>

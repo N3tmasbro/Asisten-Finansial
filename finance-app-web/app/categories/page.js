@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import api from '../../lib/api';
+import { getCategoryStyle } from '../../lib/categoryColors';
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState({ expense: [], income: [] });
@@ -70,17 +71,32 @@ export default function CategoriesPage() {
   }
 
   function CategoryCard({ cat }) {
+    const style = getCategoryStyle(cat.name);
     return (
-      <div className="glass-card text-center relative group">
-        <div className="text-3xl mb-2">{cat.icon || '📌'}</div>
-        <p className="text-sm font-semibold">{cat.name}</p>
+      <div className="card" style={{ padding: 20, textAlign: 'center', transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'default', position: 'relative' }}
+        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--card-hover-shadow)'; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
+      >
+        <div style={{
+          width: 48, height: 48, borderRadius: 12, margin: '0 auto 10px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 24, backgroundColor: style.bg,
+        }}>
+          {cat.icon || '📌'}
+        </div>
+        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{cat.name}</p>
         {cat.is_default ? (
-          <p className="text-xs text-gray-500 mt-1">Default</p>
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '6px 0 0' }}>Default</p>
         ) : (
           <button
             onClick={() => handleDelete(cat.id)}
             disabled={deleting === cat.id}
-            className="mt-2 text-xs text-rose-400 hover:text-rose-300 opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{
+              marginTop: 8, fontSize: 12, color: 'var(--accent-red)', background: 'none', border: 'none',
+              opacity: 0.6, cursor: 'pointer', transition: 'opacity 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '0.6'}
           >
             {deleting === cat.id ? '...' : 'Hapus'}
           </button>
@@ -90,11 +106,11 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-8">
+    <div style={{ padding: 32 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Kategori</h1>
-          <p className="text-gray-400 text-sm mt-1">Kelola kategori pengeluaran dan pemasukan</p>
+          <h1 className="font-poppins" style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>Kategori</h1>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '4px 0 0' }}>Kelola kategori pengeluaran dan pemasukan</p>
         </div>
         <button className="btn-primary" onClick={() => { setShowForm(!showForm); setError(''); }}>
           + Tambah Kategori
@@ -102,99 +118,79 @@ export default function CategoriesPage() {
       </div>
 
       {success && (
-        <div className="p-3 rounded-lg text-sm text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 mb-4">
-          {success}
-        </div>
+        <div style={{ padding: 12, borderRadius: 10, fontSize: 14, color: 'var(--accent-green)', background: 'var(--accent-green-bg)', marginBottom: 16 }}>{success}</div>
       )}
 
       {showForm && (
-        <div className="glass-card mb-6 animate-slide-up">
-          <h3 className="text-lg font-bold mb-4">Tambah Kategori Baru</h3>
+        <div className="card animate-slide-up" style={{ padding: 24, marginBottom: 20 }}>
+          <h3 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 16px' }}>Tambah Kategori Baru</h3>
           <form onSubmit={handleCreate}>
             {error && (
-              <div className="p-3 rounded-lg text-sm text-rose-400 bg-rose-400/10 border border-rose-400/20 mb-4">
-                {error}
-              </div>
+              <div style={{ padding: 12, borderRadius: 8, fontSize: 13, color: 'var(--accent-red)', background: 'var(--accent-red-bg)', marginBottom: 16 }}>{error}</div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Nama</label>
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="Nama kategori"
-                  value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })}
-                  required
-                />
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Nama</label>
+                <input type="text" className="input-field" placeholder="Nama kategori"
+                  value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Tipe</label>
-                <select
-                  className="input-field"
-                  value={form.type}
-                  onChange={e => setForm({ ...form, type: e.target.value })}
-                >
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Tipe</label>
+                <select className="input-field" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
                   <option value="expense">Pengeluaran</option>
                   <option value="income">Pemasukan</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Icon (Emoji)</label>
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="📌"
-                  maxLength={4}
-                  value={form.icon}
-                  onChange={e => setForm({ ...form, icon: e.target.value })}
-                />
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Icon (Emoji)</label>
+                <input type="text" className="input-field" placeholder="📌" maxLength={4}
+                  value={form.icon} onChange={e => setForm({ ...form, icon: e.target.value })} />
               </div>
             </div>
-            <div className="flex gap-2 mt-4">
-              <button type="submit" disabled={saving} className="btn-primary text-sm">
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button type="submit" disabled={saving} className="btn-primary" style={{ fontSize: 13 }}>
                 {saving ? 'Menyimpan...' : 'Simpan'}
               </button>
-              <button type="button" className="btn-secondary text-sm" onClick={() => setShowForm(false)}>Batal</button>
+              <button type="button" className="btn-secondary" style={{ fontSize: 13 }} onClick={() => setShowForm(false)}>Batal</button>
             </div>
           </form>
         </div>
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center min-h-[300px]">
-          <div className="text-center">
-            <div className="text-4xl mb-3 animate-pulse">🏷️</div>
-            <p className="text-gray-400">Memuat kategori...</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }} className="animate-pulse">🏷️</div>
+            <p style={{ color: 'var(--text-secondary)' }}>Memuat kategori...</p>
           </div>
         </div>
       ) : (
         <>
           {/* Expense Categories */}
-          <div className="mb-8">
-            <h2 className="text-lg font-bold mb-4 text-rose-400">💸 Pengeluaran</h2>
+          <div style={{ marginBottom: 32 }}>
+            <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--color-expense)', margin: '0 0 16px' }}>💸 Pengeluaran</h2>
             {categories.expense.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 16 }}>
                 {categories.expense.map((cat) => (
                   <CategoryCard key={cat.id} cat={cat} />
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">Belum ada kategori pengeluaran.</p>
+              <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>Belum ada kategori pengeluaran.</p>
             )}
           </div>
 
           {/* Income Categories */}
           <div>
-            <h2 className="text-lg font-bold mb-4 text-emerald-400">💰 Pemasukan</h2>
+            <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--color-income)', margin: '0 0 16px' }}>💰 Pemasukan</h2>
             {categories.income.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 16 }}>
                 {categories.income.map((cat) => (
                   <CategoryCard key={cat.id} cat={cat} />
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">Belum ada kategori pemasukan.</p>
+              <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>Belum ada kategori pemasukan.</p>
             )}
           </div>
         </>

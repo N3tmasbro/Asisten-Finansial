@@ -92,10 +92,10 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="animate-fade-in flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="text-4xl mb-3 animate-pulse">⚙️</div>
-          <p className="text-gray-400">Memuat pengaturan...</p>
+      <div style={{ padding: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }} className="animate-pulse">⚙️</div>
+          <p style={{ color: 'var(--text-secondary)' }}>Memuat pengaturan...</p>
         </div>
       </div>
     );
@@ -106,35 +106,35 @@ export default function SettingsPage() {
   const botName = bridgeStatus?.user?.name || null;
 
   return (
-    <div className="animate-fade-in max-w-3xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-extrabold tracking-tight">Pengaturan</h1>
-        <p className="text-gray-400 text-sm mt-1">Kelola profil dan koneksi WhatsApp</p>
+    <div style={{ padding: 32, maxWidth: 720 }}>
+      <div style={{ marginBottom: 28 }}>
+        <h1 className="font-poppins" style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>Pengaturan</h1>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '4px 0 0' }}>Kelola profil dan koneksi WhatsApp</p>
       </div>
 
       {/* Profile Section */}
-      <div className="glass-card mb-6">
-        <h2 className="text-lg font-bold mb-4">👤 Profil</h2>
-        <div className="space-y-4">
+      <div className="card" style={{ padding: 24, marginBottom: 20 }}>
+        <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 16px' }}>👤 Profil</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">Nama</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Nama</label>
             <input type="text" className="input-field" value={profile?.name || ''} readOnly />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">Email</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Email</label>
             <input type="email" className="input-field" value={profile?.email || ''} readOnly />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">Nomor WhatsApp</label>
-            <div className="flex gap-2">
-              <input type="text" className="input-field flex-1"
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Nomor WhatsApp</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input type="text" className="input-field" style={{ flex: 1 }}
                 value={profile?.phone_number ? `+${profile.phone_number}` : '-'} readOnly />
               {phoneVerified ? (
-                <span className="flex items-center gap-1 text-xs font-semibold text-emerald-400 bg-emerald-400/10 px-3 rounded-lg">
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--accent-green)', background: 'var(--accent-green-bg)', padding: '0 12px', borderRadius: 8, whiteSpace: 'nowrap' }}>
                   ✅ Terverifikasi
                 </span>
               ) : (
-                <span className="flex items-center gap-1 text-xs font-semibold text-amber-400 bg-amber-400/10 px-3 rounded-lg">
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--accent-amber)', background: 'var(--accent-amber-bg)', padding: '0 12px', borderRadius: 8, whiteSpace: 'nowrap' }}>
                   ⚠️ Belum diverifikasi
                 </span>
               )}
@@ -145,54 +145,49 @@ export default function SettingsPage() {
 
       {/* WhatsApp Verification Section — shown only if not yet verified */}
       {!phoneVerified && (
-        <div className="glass-card mb-6" style={{ borderColor: 'rgba(99,102,241,0.2)' }}>
-          <div className="flex items-start gap-4">
-            <div className="text-3xl mt-1">🔐</div>
-            <div className="flex-1">
-              <h2 className="text-lg font-bold mb-1">Verifikasi Nomor WhatsApp</h2>
-              <p className="text-sm text-gray-400 mb-4">
+        <div className="card" style={{ padding: 24, marginBottom: 20, borderColor: 'var(--teal-bg)', borderLeft: '3px solid var(--teal)' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+            <div style={{ fontSize: 28, marginTop: 4 }}>🔐</div>
+            <div style={{ flex: 1 }}>
+              <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>Verifikasi Nomor WhatsApp</h2>
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 16px' }}>
                 Verifikasi nomor WhatsApp kamu agar bot bisa mengenali pesanmu dan mencatat transaksi secara otomatis.
               </p>
 
               {/* Success state */}
               {otpStep === 'success' && (
-                <div className="flex items-center gap-3 p-4 rounded-xl mb-4"
-                  style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
-                  <span className="text-2xl">🎉</span>
-                  <p className="text-sm font-semibold text-emerald-400">{otpSuccess}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 16, borderRadius: 12, marginBottom: 16, background: 'var(--accent-green-bg)', border: '1px solid var(--accent-green-bg)' }}>
+                  <span style={{ fontSize: 20 }}>🎉</span>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent-green)', margin: 0 }}>{otpSuccess}</p>
                 </div>
               )}
 
               {/* Error message */}
               {otpError && (
-                <div className="flex items-center gap-2 p-3 rounded-lg mb-4"
-                  style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)' }}>
-                  <span className="text-sm">⚠️</span>
-                  <p className="text-sm text-rose-400">{otpError}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 12, borderRadius: 8, marginBottom: 16, background: 'var(--accent-red-bg)' }}>
+                  <span style={{ fontSize: 14 }}>⚠️</span>
+                  <p style={{ fontSize: 14, color: 'var(--accent-red)', margin: 0 }}>{otpError}</p>
                 </div>
               )}
 
               {/* Step: idle — show Send OTP button */}
               {(otpStep === 'idle' || otpStep === 'sending') && (
-                <div className="flex flex-col gap-3">
-                  <p className="text-xs text-gray-500">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>
                     Kode OTP 6 digit akan dikirimkan ke nomor{' '}
-                    <span className="text-white font-medium">+{profile?.phone_number}</span>{' '}
+                    <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>+{profile?.phone_number}</span>{' '}
                     via WhatsApp.
                   </p>
                   <button
                     id="btn-request-otp"
                     onClick={handleRequestOtp}
                     disabled={otpStep === 'sending'}
-                    className="w-full sm:w-auto px-6 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50"
-                    style={{
-                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                      color: 'white',
-                    }}
+                    className="btn-primary"
+                    style={{ alignSelf: 'flex-start' }}
                   >
                     {otpStep === 'sending' ? (
-                      <span className="flex items-center gap-2 justify-center">
-                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                         Mengirim OTP...
                       </span>
                     ) : (
@@ -204,9 +199,9 @@ export default function SettingsPage() {
 
               {/* Step: input or verifying — show OTP input form */}
               {(otpStep === 'input' || otpStep === 'verifying') && (
-                <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
+                <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-2">
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 8 }}>
                       Masukkan kode 6 digit dari WhatsApp
                     </label>
                     <input
@@ -219,30 +214,25 @@ export default function SettingsPage() {
                       onChange={handleOtpInput}
                       placeholder="• • • • • •"
                       autoFocus
-                      className="input-field text-center text-2xl font-bold tracking-[0.5em] w-full"
-                      style={{ letterSpacing: '0.4em' }}
+                      className="input-field"
+                      style={{ textAlign: 'center', fontSize: 24, fontWeight: 700, letterSpacing: '0.4em', width: '100%' }}
                     />
-                    <p className="text-xs text-gray-500 mt-1.5">
+                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '6px 0 0' }}>
                       Kode berlaku selama 10 menit sejak dikirim.
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <button
                       id="btn-verify-otp"
                       type="submit"
                       disabled={otpCode.length !== 6 || otpStep === 'verifying'}
-                      className="px-6 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50"
-                      style={{
-                        background: otpCode.length === 6
-                          ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
-                          : 'rgba(255,255,255,0.05)',
-                        color: 'white',
-                      }}
+                      className="btn-primary"
+                      style={{ opacity: otpCode.length === 6 ? 1 : 0.5 }}
                     >
                       {otpStep === 'verifying' ? (
-                        <span className="flex items-center gap-2">
-                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                           Memverifikasi...
                         </span>
                       ) : (
@@ -256,8 +246,12 @@ export default function SettingsPage() {
                       type="button"
                       onClick={handleRequestOtp}
                       disabled={otpCooldown > 0 || otpStep === 'verifying'}
-                      className="text-sm font-medium transition-colors cursor-pointer disabled:opacity-40"
-                      style={{ color: otpCooldown > 0 ? '#6b7280' : '#818cf8' }}
+                      style={{
+                        background: 'none', border: 'none', fontSize: 14, fontWeight: 500,
+                        color: otpCooldown > 0 ? 'var(--text-tertiary)' : 'var(--teal)',
+                        cursor: otpCooldown > 0 ? 'default' : 'pointer',
+                        opacity: otpCooldown > 0 ? 0.6 : 1,
+                      }}
                     >
                       {otpCooldown > 0 ? `Kirim ulang (${otpCooldown}s)` : 'Kirim ulang OTP'}
                     </button>
@@ -270,41 +264,37 @@ export default function SettingsPage() {
       )}
 
       {/* WhatsApp Connection — Dynamic */}
-      <div className="glass-card mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">📱 Koneksi WhatsApp</h2>
+      <div className="card" style={{ padding: 24, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>📱 Koneksi WhatsApp</h2>
           <button
             onClick={fetchBridgeStatus}
-            className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+            style={{ background: 'none', border: 'none', fontSize: 13, color: 'var(--teal)', fontWeight: 500, cursor: 'pointer' }}
           >
             🔄 Refresh
           </button>
         </div>
         {bridgeLoading ? (
-          <div className="flex items-center gap-3 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)' }}>
-            <div className="w-3 h-3 rounded-full bg-gray-500 animate-pulse" />
-            <p className="text-sm text-gray-400">Mengecek status bridge...</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 16, borderRadius: 10, background: 'var(--bg-secondary)' }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--text-tertiary)' }} className="animate-pulse" />
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>Mengecek status bridge...</p>
           </div>
         ) : isConnected ? (
-          <div className="flex items-center gap-4 p-4 rounded-xl"
-            style={{ background: 'rgba(16,185,129,0.05)' }}>
-            <div className="w-3 h-3 rounded-full bg-emerald-400"
-              style={{ boxShadow: '0 0 8px rgba(16,185,129,0.5)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16, borderRadius: 10, background: 'var(--accent-green-bg)' }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent-green)', boxShadow: '0 0 8px var(--accent-green-bg)' }} />
             <div>
-              <p className="text-sm font-semibold text-white">Terhubung ✅</p>
-              <p className="text-xs text-gray-400">
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Terhubung ✅</p>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '2px 0 0' }}>
                 {botName ? `Bot: ${botName}` : 'WhatsApp bridge aktif.'} Kirim pesan ke bot untuk mencatat transaksi.
               </p>
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-4 p-4 rounded-xl"
-            style={{ background: 'rgba(244,63,94,0.05)' }}>
-            <div className="w-3 h-3 rounded-full bg-rose-400"
-              style={{ boxShadow: '0 0 8px rgba(244,63,94,0.5)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16, borderRadius: 10, background: 'var(--accent-red-bg)' }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent-red)', boxShadow: '0 0 8px var(--accent-red-bg)' }} />
             <div>
-              <p className="text-sm font-semibold text-white">Tidak Terhubung ❌</p>
-              <p className="text-xs text-gray-400">
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Tidak Terhubung ❌</p>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '2px 0 0' }}>
                 {bridgeStatus?.error || 'WhatsApp bridge tidak aktif. Jalankan `npm start` di folder whatsapp-bridge.'}
               </p>
             </div>
@@ -312,26 +302,24 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {/* Subscription section hidden for demo */}
-      {/* TODO: Restore when payment gateway is integrated
-      <div className="glass-card mb-6">
-        <h2 className="text-lg font-bold mb-4">⭐ Langganan</h2>
-        ...
-      </div>
-      */}
-
       {/* Danger Zone */}
-      <div className="glass-card border-rose-500/20">
-        <h2 className="text-lg font-bold mb-4 text-rose-400">⚠️ Zona Berbahaya</h2>
-        <div className="flex items-center justify-between">
+      <div className="card" style={{ padding: 24, borderColor: 'var(--accent-red-bg)', borderLeft: '3px solid var(--accent-red)' }}>
+        <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--accent-red)', margin: '0 0 16px' }}>⚠️ Zona Berbahaya</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <p className="text-sm font-medium text-white">Logout</p>
-            <p className="text-xs text-gray-400">Keluar dari akun ini</p>
+            <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', margin: 0 }}>Logout</p>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '2px 0 0' }}>Keluar dari akun ini</p>
           </div>
           <button
             onClick={handleLogout}
             disabled={loggingOut}
-            className="px-4 py-2 rounded-lg text-sm font-semibold text-rose-400 bg-rose-400/10 border border-rose-400/20 hover:bg-rose-400/20 transition-all duration-150 cursor-pointer disabled:opacity-50"
+            style={{
+              padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600,
+              color: 'var(--accent-red)', background: 'var(--accent-red-bg)',
+              border: '1px solid var(--accent-red-bg)', cursor: 'pointer',
+              opacity: loggingOut ? 0.5 : 1,
+              transition: 'all 0.15s',
+            }}
           >
             {loggingOut ? 'Logging out...' : 'Logout'}
           </button>

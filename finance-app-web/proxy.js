@@ -20,7 +20,7 @@ const protectedRoutes = [
   '/settings',
 ];
 
-const authRoutes = ['/', '/login', '/register'];
+const authRoutes = ['/login', '/register'];
 
 export function proxy(request) {
   const { pathname } = request.nextUrl;

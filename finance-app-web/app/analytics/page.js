@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, CartesianGrid } from 'recharts';
 import { formatRupiah } from '../../lib/utils';
 import api from '../../lib/api';
+import StatCard from '../../components/StatCard';
 
-const COLORS = ['#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#10b981', '#f59e0b', '#f43f5e'];
+const COLORS = ['#0891b2', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#fbbf24'];
 
 // ─── Period label helpers ──────────────────────────────────────────────────────
 function parsePeriod(period) {
@@ -49,11 +50,14 @@ function getLast12Months() {
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="rounded-lg px-3 py-2 text-xs border border-white/10"
-        style={{ background: 'rgba(17, 24, 39, 0.95)', backdropFilter: 'blur(8px)' }}>
-        <p className="text-gray-400 mb-1">{label}</p>
+      <div style={{
+        borderRadius: 10, padding: '10px 14px', fontSize: 12,
+        border: '1px solid var(--border)', background: 'var(--bg-card)',
+        boxShadow: 'var(--shadow-md)',
+      }}>
+        <p style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>{label}</p>
         {payload.map((entry, i) => (
-          <p key={i} style={{ color: entry.color }} className="font-semibold">
+          <p key={i} style={{ color: entry.color, fontWeight: 600 }}>
             {entry.name}: {formatRupiah(entry.value)}
           </p>
         ))}
@@ -153,51 +157,69 @@ export default function AnalyticsPage() {
   const isMonthPickerActive = period.startsWith('specific_month:');
 
   return (
-    <div className="animate-fade-in">
+    <div style={{ padding: 32 }}>
       {/* Header & Filter */}
-      <div className="flex items-center justify-between mb-8">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Analitik</h1>
-          <p className="text-gray-400 text-sm mt-1">Insight mendalam tentang pola keuanganmu</p>
+          <h1 className="font-poppins" style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>Analitik</h1>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '4px 0 0' }}>Insight mendalam tentang pola keuanganmu</p>
         </div>
-        <div className="flex gap-2 items-center">
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           {mainFilters.map((p) => (
             <button
               key={p}
               onClick={() => selectPeriod(p)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150
-                ${period === p ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-400 hover:text-white hover:bg-white/[0.03]'}`}
+              style={{
+                padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)',
+                background: period === p ? 'var(--color-accent)' : 'var(--bg-card)',
+                color: period === p ? 'var(--color-accent-text)' : 'var(--text-secondary)',
+                fontSize: 13, fontWeight: period === p ? 600 : 400,
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}
             >
               {p === 'this_year' ? 'Tahun Ini' : p === 'this_month' ? 'Bulan Ini' : 'Minggu Ini'}
             </button>
           ))}
 
           {/* Month Picker Dropdown */}
-          <div className="relative" ref={pickerRef}>
+          <div style={{ position: 'relative' }} ref={pickerRef}>
             <button
               onClick={() => setShowMonthPicker(v => !v)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150
-                ${isMonthPickerActive
-                  ? 'bg-indigo-500/20 text-indigo-400'
-                  : 'text-gray-400 hover:text-white hover:bg-white/[0.03]'}`}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)',
+                background: isMonthPickerActive ? 'var(--color-accent)' : 'var(--bg-card)',
+                color: isMonthPickerActive ? 'var(--color-accent-text)' : 'var(--text-secondary)',
+                fontSize: 13, fontWeight: isMonthPickerActive ? 600 : 400,
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}
             >
               <span>📅</span>
               <span>{isMonthPickerActive ? periodInfo.short : 'Pilih Bulan'}</span>
-              <span className="text-[10px] opacity-60">{showMonthPicker ? '▲' : '▾'}</span>
+              <span style={{ fontSize: 10, opacity: 0.6 }}>{showMonthPicker ? '▲' : '▾'}</span>
             </button>
 
             {showMonthPicker && (
-              <div className="absolute right-0 top-full mt-2 z-50 w-48 rounded-xl border border-white/10 overflow-hidden shadow-2xl"
-                style={{ background: 'rgba(15, 20, 35, 0.98)', backdropFilter: 'blur(16px)' }}>
-                <div className="max-h-60 overflow-y-auto py-1">
+              <div style={{
+                position: 'absolute', right: 0, top: '100%', marginTop: 8, zIndex: 50,
+                width: 200, borderRadius: 12, border: '1px solid var(--border)',
+                overflow: 'hidden', boxShadow: 'var(--shadow-lg)',
+                background: 'var(--bg-card)',
+              }}>
+                <div style={{ maxHeight: 240, overflowY: 'auto', padding: '4px 0' }}>
                   {last12Months.map(({ key, label }) => (
                     <button
                       key={key}
                       onClick={() => selectPeriod(key)}
-                      className={`w-full text-left px-4 py-2 text-xs transition-colors duration-100
-                        ${period === key
-                          ? 'bg-indigo-500/20 text-indigo-400 font-semibold'
-                          : 'text-gray-300 hover:bg-white/[0.06] hover:text-white'}`}
+                      style={{
+                        width: '100%', textAlign: 'left', padding: '8px 16px', border: 'none',
+                        fontSize: 13, cursor: 'pointer', transition: 'all 0.1s',
+                        background: period === key ? 'var(--teal-bg)' : 'transparent',
+                        color: period === key ? 'var(--teal)' : 'var(--text-secondary)',
+                        fontWeight: period === key ? 600 : 400,
+                      }}
+                      onMouseEnter={e => { if (period !== key) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                      onMouseLeave={e => { if (period !== key) e.currentTarget.style.background = 'transparent'; }}
                     >
                       {label}
                     </button>
@@ -210,123 +232,94 @@ export default function AnalyticsPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="text-4xl mb-3 animate-pulse">📊</div>
-            <p className="text-gray-400">Memuat analitik...</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }} className="animate-pulse">📊</div>
+            <p style={{ color: 'var(--text-secondary)' }}>Memuat analitik...</p>
           </div>
         </div>
       ) : (
         <>
           {/* Stat Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
-            <div className="stat-card expense">
-              <p className="text-xs font-medium text-gray-400 mb-1">Pengeluaran {periodInfo.short}</p>
-              <p className="text-2xl font-extrabold tracking-tight text-rose-400">{formatRupiah(totalExpense)}</p>
-              {expenseChange !== 0 && (
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full inline-block mt-2 ${expenseChange > 0 ? 'text-rose-400 bg-rose-400/10' : 'text-emerald-400 bg-emerald-400/10'}`}>
-                  {expenseChange > 0 ? '▲' : '▼'} {Math.abs(expenseChange).toFixed(1)}% vs {periodInfo.prev}
-                </span>
-              )}
-            </div>
-            <div className="stat-card income">
-              <p className="text-xs font-medium text-gray-400 mb-1">Pemasukan {periodInfo.short}</p>
-              <p className="text-2xl font-extrabold tracking-tight text-emerald-400">{formatRupiah(totalIncome)}</p>
-              {incomeChange !== 0 && (
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full inline-block mt-2 ${incomeChange > 0 ? 'text-emerald-400 bg-emerald-400/10' : 'text-rose-400 bg-rose-400/10'}`}>
-                  {incomeChange > 0 ? '▲' : '▼'} {Math.abs(incomeChange).toFixed(1)}% vs {periodInfo.prev}
-                </span>
-              )}
-            </div>
-            {/* Prediction card — trend-aware with dynamic colors */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
+            <StatCard
+              title={`Pengeluaran ${periodInfo.short}`}
+              value={formatRupiah(totalExpense)}
+              subtitle={expenseChange !== 0 ? `${expenseChange > 0 ? '▲' : '▼'} ${Math.abs(expenseChange).toFixed(1)}% vs ${periodInfo.prev}` : '—'}
+              color="red"
+              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>}
+            />
+            <StatCard
+              title={`Pemasukan ${periodInfo.short}`}
+              value={formatRupiah(totalIncome)}
+              subtitle={incomeChange !== 0 ? `${incomeChange > 0 ? '▲' : '▼'} ${Math.abs(incomeChange).toFixed(1)}% vs ${periodInfo.prev}` : '—'}
+              color="green"
+              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" /></svg>}
+            />
+            {/* Prediction card */}
             {periodInfo.isMonthly ? (
-              <div className="stat-card accent">
-                <p className="text-xs font-medium text-gray-400 mb-1">Prediksi Saldo Akhir Bulan</p>
-                <p className={`text-2xl font-extrabold tracking-tight ${
-                  predictionTrend === 'burning' ? 'text-rose-400'
-                  : predictionTrend === 'saving' ? 'text-emerald-400'
-                  : predictionTrend === 'stable' ? 'text-sky-400'
-                  : 'text-gray-400'
-                }`}>
-                  {predictionTrend === 'unknown' ? '—' : formatRupiah(predictedBalance)}
-                </p>
-
-                {/* Trend-specific detail */}
-                {predictionTrend === 'burning' && daysUntilEmpty && (
-                  <div className="mt-2">
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-amber-400 bg-amber-400/10">
-                      ⚠️ Saldo habis dalam {daysUntilEmpty} hari
-                    </span>
-                    <p className="text-xs text-gray-500 mt-1.5">
-                      Laju: -{formatRupiah(Math.abs(dailyNetBurn))}/hari
-                    </p>
-                  </div>
-                )}
-                {predictionTrend === 'saving' && (
-                  <div className="mt-2">
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-emerald-400 bg-emerald-400/10">
-                      💰 +{formatRupiah(dailySavingsRate)}/hari
-                    </span>
-                    <p className="text-xs text-gray-500 mt-1.5">{daysLeft} hari tersisa</p>
-                  </div>
-                )}
-                {predictionTrend === 'stable' && (
-                  <p className="text-xs text-gray-500 mt-2">⚖️ Keuangan seimbang • {daysLeft} hari tersisa</p>
-                )}
-                {predictionTrend === 'unknown' && (
-                  <p className="text-xs text-gray-500 mt-2">Belum cukup data transaksi</p>
-                )}
-              </div>
+              <StatCard
+                title="Prediksi Saldo Akhir Bulan"
+                value={predictionTrend === 'unknown' ? '—' : formatRupiah(predictedBalance)}
+                subtitle={
+                  predictionTrend === 'burning' && daysUntilEmpty ? `⚠️ Habis dalam ${daysUntilEmpty} hari · -${formatRupiah(Math.abs(dailyNetBurn))}/hari`
+                  : predictionTrend === 'saving' ? `💰 +${formatRupiah(dailySavingsRate)}/hari · ${daysLeft} hari tersisa`
+                  : predictionTrend === 'stable' ? `⚖️ Seimbang · ${daysLeft} hari tersisa`
+                  : 'Belum cukup data'
+                }
+                color={predictionTrend === 'burning' ? 'red' : predictionTrend === 'saving' ? 'green' : 'teal'}
+                icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>}
+              />
             ) : (
-              <div className="stat-card accent">
-                <p className="text-xs font-medium text-gray-400 mb-1">Selisih Bersih</p>
-                <p className={`text-2xl font-extrabold tracking-tight ${totalIncome - totalExpense >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {formatRupiah(totalIncome - totalExpense)}
-                </p>
-                <p className="text-xs text-gray-500 mt-2">Pemasukan − Pengeluaran</p>
-              </div>
+              <StatCard
+                title="Selisih Bersih"
+                value={formatRupiah(totalIncome - totalExpense)}
+                subtitle="Pemasukan − Pengeluaran"
+                color={totalIncome - totalExpense >= 0 ? 'green' : 'red'}
+                icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>}
+              />
             )}
           </div>
 
           {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 20 }}>
             {/* Daily Spending Trend */}
-            <div className="lg:col-span-2 glass-card">
-              <h2 className="text-lg font-bold mb-4">Tren Pengeluaran Harian</h2>
+            <div className="card" style={{ padding: 24 }}>
+              <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 16px' }}>Tren Pengeluaran Harian</h2>
               {dailyData.length > 0 ? (
                 <div style={{ width: '100%', height: 300 }}>
                   <ResponsiveContainer>
                     <AreaChart data={dailyData}>
                       <defs>
                         <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                         </linearGradient>
                         <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                           <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                      <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false}
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
+                      <XAxis dataKey="date" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false}
                         tickFormatter={(v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}jt` : `${(v / 1000).toFixed(0)}rb`} />
                       <Tooltip content={<CustomTooltip />} />
-                      <Area type="monotone" dataKey="expense" name="Pengeluaran" stroke="#f43f5e" fill="url(#colorExpense)" strokeWidth={2} />
+                      <Area type="monotone" dataKey="expense" name="Pengeluaran" stroke="#ef4444" fill="url(#colorExpense)" strokeWidth={2} />
                       <Area type="monotone" dataKey="income" name="Pemasukan" stroke="#10b981" fill="url(#colorIncome)" strokeWidth={2} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-64 text-gray-500 text-sm">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 256, color: 'var(--text-tertiary)', fontSize: 14 }}>
                   Belum ada data transaksi untuk periode ini
                 </div>
               )}
             </div>
 
             {/* Category Donut */}
-            <div className="glass-card">
-              <h2 className="text-lg font-bold mb-4">Kategori</h2>
+            <div className="card" style={{ padding: 24 }}>
+              <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 16px' }}>Kategori</h2>
               {pieData.length > 0 ? (
                 <>
                   <div style={{ width: '100%', height: 200 }}>
@@ -342,20 +335,20 @@ export default function AnalyticsPage() {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="mt-4 space-y-2">
+                  <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {pieData.slice(0, 5).map((cat, i) => (
-                      <div key={i} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full" style={{ background: cat.color }} />
-                          <span className="text-gray-300 truncate max-w-[100px]">{cat.name}</span>
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 14 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 10, height: 10, borderRadius: '50%', background: cat.color }} />
+                          <span style={{ color: 'var(--text-secondary)', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
                         </div>
-                        <span className="font-semibold">{formatRupiah(cat.value)}</span>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{formatRupiah(cat.value)}</span>
                       </div>
                     ))}
                   </div>
                 </>
               ) : (
-                <div className="flex items-center justify-center h-64 text-gray-500 text-sm">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 256, color: 'var(--text-tertiary)', fontSize: 14 }}>
                   Belum ada data
                 </div>
               )}
@@ -363,26 +356,26 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Category Comparison */}
-          <div className="glass-card">
-            <h2 className="text-lg font-bold mb-4">
+          <div className="card" style={{ padding: 24 }}>
+            <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 16px' }}>
               Perbandingan {periodInfo.short} vs {periodInfo.prevFull}
             </h2>
             {comparisonData.length > 0 ? (
               <div style={{ width: '100%', height: 300 }}>
                 <ResponsiveContainer>
                   <BarChart data={comparisonData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="category" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false}
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
+                    <XAxis dataKey="category" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false}
                       tickFormatter={(v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}jt` : `${(v / 1000).toFixed(0)}rb`} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="periodLalu" name={periodInfo.prevFull} fill="#374151" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="periodIni" name={periodInfo.short} fill="#6366f1" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="periodLalu" name={periodInfo.prevFull} fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="periodIni" name={periodInfo.short} fill="#0891b2" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-40 text-gray-500 text-sm">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 160, color: 'var(--text-tertiary)', fontSize: 14 }}>
                 Belum ada data perbandingan
               </div>
             )}

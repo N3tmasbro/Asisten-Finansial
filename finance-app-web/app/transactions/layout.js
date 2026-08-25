@@ -1,12 +1,9 @@
 import Sidebar from '../../components/Sidebar';
-
 export default function TransactionsLayout({ children }) {
   return (
-    <div className="flex min-h-screen">
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar />
-      <main className="ml-64 flex-1 p-8 min-h-screen">
-        {children}
-      </main>
+      <main style={{ marginLeft: 200, flex: 1, minHeight: '100vh', backgroundColor: 'var(--bg-base)' }}>{children}</main>
     </div>
   );
 }

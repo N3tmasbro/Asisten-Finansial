@@ -3,24 +3,35 @@
 import { useState, useEffect } from 'react';
 import { formatRupiah, formatDate } from '../../lib/utils';
 import api from '../../lib/api';
+import { getCategoryStyle } from '../../lib/categoryColors';
+import ConfidenceBadge from '../../components/ConfidenceBadge';
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [wallets, setWallets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
+  
+  // Filtering & Sorting
+  const [filter, setFilter] = useState('all'); // 'all' | 'expense' | 'income' | 'review'
   const [categoryFilter, setCategoryFilter] = useState('');
   const [walletFilter, setWalletFilter] = useState('');
-  const [periodFilter, setPeriodFilter] = useState('all');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
   const [sortKey, setSortKey] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [perPage, setPerPage] = useState(15);
 
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(15);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
+  // Time Period states
+  const [timePeriod, setTimePeriod] = useState('all'); // 'all' | 'this_month' | 'last_month' | 'custom'
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  // Forms & Actions
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(null);
@@ -35,26 +46,31 @@ export default function TransactionsPage() {
     transaction_date: new Date().toISOString().split('T')[0],
   });
 
+  // Fetch static lookups once on mount
   useEffect(() => {
-    fetchAll();
+    fetchStaticData();
   }, []);
 
+  // Fetch transactions when page/perPage changes
   useEffect(() => {
-    setCurrentPage(1);
-  }, [filter, categoryFilter, walletFilter, periodFilter, searchQuery, dateFrom, dateTo]);
+    fetchTransactions();
+  }, [page, perPage]);
 
-  async function fetchAll() {
-    setLoading(true);
+  // Reset to page 1 and fetch when filter/search changes
+  useEffect(() => {
+    if (page === 1) {
+      fetchTransactions();
+    } else {
+      setPage(1);
+    }
+  }, [filter, categoryFilter, walletFilter, searchQuery, timePeriod, dateFrom, dateTo]);
+
+  async function fetchStaticData() {
     try {
-      const [txRes, catRes, walletRes] = await Promise.allSettled([
-        api.getTransactions({ per_page: 200, sort: 'latest' }),
+      const [catRes, walletRes] = await Promise.allSettled([
         api.getCategories(),
         api.getWallets(),
       ]);
-      if (txRes.status === 'fulfilled') {
-        const txData = txRes.value;
-        setTransactions(Array.isArray(txData) ? txData : (txData.data || []));
-      }
       if (catRes.status === 'fulfilled') {
         const cats = catRes.value;
         setCategories(cats.categories || cats || []);
@@ -64,7 +80,60 @@ export default function TransactionsPage() {
         setWallets(wals.wallets || wals || []);
       }
     } catch (err) {
-      console.error('Failed to fetch:', err);
+      console.error('Failed to fetch static data:', err);
+    }
+  }
+
+  async function fetchTransactions() {
+    setLoading(true);
+    try {
+      const params = {
+        page,
+        per_page: perPage,
+      };
+
+      if (filter !== 'all') {
+        if (filter === 'review') {
+          params.needs_review = true;
+        } else {
+          params.type = filter;
+        }
+      }
+      if (categoryFilter) params.category_id = categoryFilter;
+      if (walletFilter) params.wallet_id = walletFilter;
+      if (searchQuery) params.search = searchQuery;
+
+      if (timePeriod === 'this_month') {
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+        params.date_from = firstDay;
+        params.date_to = lastDay;
+      } else if (timePeriod === 'last_month') {
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
+        const lastDay = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
+        params.date_from = firstDay;
+        params.date_to = lastDay;
+      } else if (timePeriod === 'custom') {
+        if (dateFrom) params.date_from = dateFrom;
+        if (dateTo) params.date_to = dateTo;
+      }
+
+      const txRes = await api.getTransactions(params);
+
+      // Handle paginated structure from backend
+      if (txRes && txRes.data) {
+        setTransactions(txRes.data);
+        setTotalPages(txRes.last_page || 1);
+        setTotalItems(txRes.total || 0);
+      } else {
+        setTransactions(Array.isArray(txRes) ? txRes : []);
+        setTotalPages(1);
+        setTotalItems(Array.isArray(txRes) ? txRes.length : 0);
+      }
+    } catch (err) {
+      console.error('Failed to fetch transactions:', err);
     } finally {
       setLoading(false);
     }
@@ -93,7 +162,7 @@ export default function TransactionsPage() {
         transaction_date: new Date().toISOString().split('T')[0],
       });
       setShowForm(false);
-      fetchAll();
+      fetchTransactions();
     } catch (err) {
       setError(err.message || 'Gagal menambah transaksi.');
     } finally {
@@ -107,7 +176,7 @@ export default function TransactionsPage() {
     try {
       await api.deleteTransaction(id);
       showMessage('Transaksi berhasil dihapus.');
-      fetchAll();
+      fetchTransactions();
     } catch (err) {
       setError(err.message || 'Gagal menghapus transaksi.');
     } finally {
@@ -131,40 +200,8 @@ export default function TransactionsPage() {
 
   const filteredCategories = categories.filter(c => c.type === form.type);
 
-  // Apply filters
-  const filtered = transactions.filter((tx) => {
-    if (filter === 'expense' && tx.type !== 'expense') return false;
-    if (filter === 'income' && tx.type !== 'income') return false;
-    if (filter === 'review' && tx.is_reviewed) return false;
-    if (categoryFilter && Number(tx.category_id) !== Number(categoryFilter)) return false;
-    if (walletFilter && Number(tx.wallet_id) !== Number(walletFilter)) return false;
-
-    // Period filter
-    if (periodFilter === 'this_month') {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, '0');
-      const prefix = `${y}-${m}`;
-      if (!tx.transaction_date?.startsWith(prefix)) return false;
-    } else if (periodFilter === 'last_month') {
-      const now = new Date();
-      const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const y = prev.getFullYear();
-      const m = String(prev.getMonth() + 1).padStart(2, '0');
-      const prefix = `${y}-${m}`;
-      if (!tx.transaction_date?.startsWith(prefix)) return false;
-    } else if (periodFilter === 'custom') {
-      if (dateFrom && tx.transaction_date < dateFrom) return false;
-      if (dateTo && tx.transaction_date > dateTo) return false;
-    }
-
-    if (searchQuery && !tx.description.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !(tx.raw_input && tx.raw_input.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
-    return true;
-  });
-
-  // Apply sorting
-  const sorted = [...filtered].sort((a, b) => {
+  // Client-side sorting for current page items
+  const sorted = [...transactions].sort((a, b) => {
     let aVal, bVal;
     switch (sortKey) {
       case 'description':
@@ -195,30 +232,16 @@ export default function TransactionsPage() {
     return 0;
   });
 
-  const totalItems = sorted.length;
-  const totalPages = Math.ceil(totalItems / perPage) || 1;
-  const paginated = sorted.slice((currentPage - 1) * perPage, currentPage * perPage);
-
-  if (loading) {
-    return (
-      <div className="animate-fade-in flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="text-4xl mb-3 animate-pulse">💸</div>
-          <p className="text-gray-400">Memuat transaksi...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-8">
+    <div style={{ padding: 32 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Transaksi</h1>
-          <p className="text-gray-400 text-sm mt-1">Riwayat lengkap semua transaksi kamu</p>
+          <h1 className="font-poppins" style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>Transaksi</h1>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '4px 0 0' }}>Riwayat lengkap semua transaksi kamu</p>
         </div>
-        <div className="flex gap-2">
-          <button className="btn-secondary" onClick={fetchAll}>🔄 Refresh</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-secondary" onClick={fetchTransactions}>🔄 Refresh</button>
           <button className="btn-primary" onClick={() => { setShowForm(!showForm); setError(''); }}>
             + Tambah Manual
           </button>
@@ -226,32 +249,32 @@ export default function TransactionsPage() {
       </div>
 
       {success && (
-        <div className="p-3 rounded-lg text-sm text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 mb-4 animate-slide-up">
+        <div style={{ padding: 12, borderRadius: 10, fontSize: 14, color: 'var(--accent-green)', background: 'var(--accent-green-bg)', border: '1px solid var(--accent-green-bg)', marginBottom: 16 }}>
           {success}
         </div>
       )}
 
       {/* Add Transaction Form */}
       {showForm && (
-        <div className="glass-card mb-6 animate-slide-up">
-          <h3 className="text-lg font-bold mb-4">Tambah Transaksi Manual</h3>
+        <div className="card animate-slide-up" style={{ padding: 24, marginBottom: 20 }}>
+          <h3 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 16px' }}>Tambah Transaksi Manual</h3>
           <form onSubmit={handleCreate}>
             {error && (
-              <div className="p-3 rounded-lg text-sm text-rose-400 bg-rose-400/10 border border-rose-400/20 mb-4">{error}</div>
+              <div style={{ padding: 12, borderRadius: 8, fontSize: 13, color: 'var(--accent-red)', background: 'var(--accent-red-bg)', marginBottom: 16 }}>{error}</div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Deskripsi</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Deskripsi</label>
                 <input type="text" className="input-field" placeholder="Makan siang, bensin, dll."
                   value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} required />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Jumlah (Rp)</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Jumlah (Rp)</label>
                 <input type="number" className="input-field" placeholder="50000"
                   value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} min="1" required />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Tipe</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Tipe</label>
                 <select className="input-field" value={form.type}
                   onChange={e => setForm({ ...form, type: e.target.value, category_id: '' })}>
                   <option value="expense">Pengeluaran</option>
@@ -259,7 +282,7 @@ export default function TransactionsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Kategori</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Kategori</label>
                 <select className="input-field" value={form.category_id}
                   onChange={e => setForm({ ...form, category_id: e.target.value })}>
                   <option value="">Pilih kategori...</option>
@@ -269,7 +292,7 @@ export default function TransactionsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Dompet</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Dompet</label>
                 <select className="input-field" value={form.wallet_id}
                   onChange={e => setForm({ ...form, wallet_id: e.target.value })}>
                   <option value="">Pilih dompet...</option>
@@ -279,93 +302,53 @@ export default function TransactionsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Tanggal</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Tanggal</label>
                 <input type="date" className="input-field"
                   value={form.transaction_date} onChange={e => setForm({ ...form, transaction_date: e.target.value })} />
               </div>
             </div>
-            <div className="flex gap-2 mt-4">
-              <button type="submit" disabled={saving} className="btn-primary text-sm">
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button type="submit" disabled={saving} className="btn-primary" style={{ fontSize: 13 }}>
                 {saving ? 'Menyimpan...' : 'Simpan Transaksi'}
               </button>
-              <button type="button" className="btn-secondary text-sm" onClick={() => setShowForm(false)}>Batal</button>
+              <button type="button" className="btn-secondary" style={{ fontSize: 13 }} onClick={() => setShowForm(false)}>Batal</button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <div className="flex rounded-lg overflow-hidden border border-white/[0.06]"
-          style={{ background: 'var(--color-surface-1)' }}>
+      {/* Filters Row 1: Tipe & Search */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
           {[
             { key: 'all', label: 'Semua' },
             { key: 'expense', label: 'Pengeluaran' },
             { key: 'income', label: 'Pemasukan' },
-            { key: 'review', label: '⚠️ Perlu Review' },
+            { key: 'review', label: '⚠️ Review' },
           ].map((f) => (
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
-              className={`px-4 py-2 text-xs font-semibold transition-all duration-150
-                ${filter === f.key
-                  ? 'bg-indigo-500/20 text-indigo-400'
-                  : 'text-gray-400 hover:text-white'
-                }`}
-            >
-              {f.label}
-            </button>
+              style={{
+                padding: '8px 16px', border: 'none', fontSize: 13, fontWeight: 600,
+                background: filter === f.key ? 'var(--teal-bg)' : 'transparent',
+                color: filter === f.key ? 'var(--teal)' : 'var(--text-secondary)',
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}
+            >{f.label}</button>
           ))}
         </div>
 
-        {/* Period / Time Filter */}
-        <select
-          className="input-field max-w-xs text-sm py-2 font-medium"
-          value={periodFilter}
-          onChange={(e) => setPeriodFilter(e.target.value)}
-        >
-          <option value="all">📅 Semua Waktu</option>
-          <option value="this_month">📅 Bulan Ini (Agustus 2026)</option>
-          <option value="last_month">📅 Bulan Lalu (Juli 2026)</option>
-          <option value="custom">📅 Custom Tanggal...</option>
-        </select>
-
-        {periodFilter === 'custom' && (
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              className="input-field text-xs py-1.5"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-            />
-            <span className="text-gray-500 text-xs">s/d</span>
-            <input
-              type="date"
-              className="input-field text-xs py-1.5"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-            />
-          </div>
-        )}
-
-        {/* Category Filter */}
-        <select
-          className="input-field max-w-xs text-sm py-2"
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-        >
+        <select className="input-field" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
+          style={{ maxWidth: 180, fontSize: 13 }}>
           <option value="">Semua Kategori</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
           ))}
         </select>
 
-        {/* Wallet Filter */}
-        <select
-          className="input-field max-w-xs text-sm py-2"
-          value={walletFilter}
-          onChange={(e) => setWalletFilter(e.target.value)}
-        >
+        <select className="input-field" value={walletFilter} onChange={(e) => setWalletFilter(e.target.value)}
+          style={{ maxWidth: 180, fontSize: 13 }}>
           <option value="">Semua Dompet</option>
           {wallets.map((w) => (
             <option key={w.id} value={w.id}>{w.name}</option>
@@ -375,158 +358,234 @@ export default function TransactionsPage() {
         <input
           type="text"
           placeholder="🔍 Cari transaksi..."
-          className="input-field max-w-xs text-sm"
+          className="input-field"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          style={{ maxWidth: 200, fontSize: 13 }}
         />
       </div>
 
-      {/* Transaction List */}
-      <div className="glass-card p-0 overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr style={{ background: 'var(--color-surface-1)' }}>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-white transition-colors"
-                onClick={() => handleSort('description')}>
-                Transaksi {sortKey === 'description' && (sortOrder === 'asc' ? '▲' : '▼')}
-              </th>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-white transition-colors"
-                onClick={() => handleSort('category')}>
-                Kategori {sortKey === 'category' && (sortOrder === 'asc' ? '▲' : '▼')}
-              </th>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-white transition-colors"
-                onClick={() => handleSort('wallet')}>
-                Dompet {sortKey === 'wallet' && (sortOrder === 'asc' ? '▲' : '▼')}
-              </th>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-white transition-colors"
-                onClick={() => handleSort('date')}>
-                Tanggal {sortKey === 'date' && (sortOrder === 'asc' ? '▲' : '▼')}
-              </th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-white transition-colors"
-                onClick={() => handleSort('amount')}>
-                Jumlah {sortKey === 'amount' && (sortOrder === 'asc' ? '▲' : '▼')}
-              </th>
-              <th className="px-5 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider select-none">
-                Status
-              </th>
-              <th className="px-5 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider w-16"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginated.map((tx) => (
-              <tr key={tx.id} className="border-t border-white/[0.04] hover:bg-white/[0.02] transition-all duration-150">
-                <td className="px-5 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-base"
-                      style={{ background: tx.type === 'income' ? 'rgba(16,185,129,0.1)' : 'rgba(244,63,94,0.1)' }}>
-                      {tx.category?.icon || '📦'}
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-white">{tx.description}</span>
-                      {tx.raw_input && tx.raw_input !== tx.description && (
-                        <p className="text-xs text-gray-500 mt-0.5">"{tx.raw_input}"</p>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-5 py-4">
-                  <span className="text-sm text-gray-400">{tx.category?.name || '-'}</span>
-                </td>
-                <td className="px-5 py-4">
-                  <span className="text-sm text-gray-400">{tx.wallet?.name || '-'}</span>
-                </td>
-                <td className="px-5 py-4">
-                  <span className="text-sm text-gray-400">{formatDate(tx.transaction_date)}</span>
-                </td>
-                <td className="px-5 py-4 text-right">
-                  <span className={`text-sm font-bold ${tx.type === 'income' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {tx.type === 'income' ? '+' : '-'}{formatRupiah(tx.amount)}
-                  </span>
-                </td>
-                <td className="px-5 py-4 text-center">
-                  {!tx.is_reviewed ? (
-                    <span className="badge-warning">⚠️ Review</span>
-                  ) : (
-                    <span className="text-xs text-gray-500">
-                      {tx.ai_confidence ? `${Math.round(tx.ai_confidence * 100)}%` : '✓'}
-                    </span>
-                  )}
-                </td>
-                <td className="px-5 py-4 text-center">
-                  <button
-                    onClick={() => handleDelete(tx.id)}
-                    disabled={deleting === tx.id}
-                    className="text-xs text-rose-400/50 hover:text-rose-400 transition-colors"
-                    title="Hapus transaksi"
-                  >
-                    {deleting === tx.id ? '...' : '🗑️'}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Filters Row 2: Time Period (BUG-008) */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+          {[
+            { key: 'all', label: 'Semua Waktu' },
+            { key: 'this_month', label: 'Bulan Ini' },
+            { key: 'last_month', label: 'Bulan Lalu' },
+            { key: 'custom', label: 'Rentang Tanggal' },
+          ].map((p) => (
+            <button
+              key={p.key}
+              onClick={() => setTimePeriod(p.key)}
+              style={{
+                padding: '8px 16px', border: 'none', fontSize: 13, fontWeight: 600,
+                background: timePeriod === p.key ? 'var(--teal-bg)' : 'transparent',
+                color: timePeriod === p.key ? 'var(--teal)' : 'var(--text-secondary)',
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}
+            >{p.label}</button>
+          ))}
+        </div>
 
-        {sorted.length === 0 && (
-          <div className="py-12 text-center">
-            <p className="text-gray-400">{transactions.length === 0 ? 'Belum ada transaksi. Kirim pesan ke WhatsApp untuk mulai!' : 'Tidak ada transaksi ditemukan.'}</p>
+        {timePeriod === 'custom' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="date"
+              className="input-field"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              style={{ maxWidth: 150, fontSize: 13 }}
+            />
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>s/d</span>
+            <input
+              type="date"
+              className="input-field"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              style={{ maxWidth: 150, fontSize: 13 }}
+            />
           </div>
         )}
+      </div>
 
-        {/* Pagination Footer Controls */}
-        {totalItems > 0 && (
-          <div className="flex flex-wrap items-center justify-between px-5 py-4 border-t border-white/[0.06] bg-white/[0.01] gap-4">
-            <div className="flex items-center gap-3">
-              <p className="text-xs text-gray-400">
-                Menampilkan <span className="font-semibold text-white">{Math.min((currentPage - 1) * perPage + 1, totalItems)}</span> - <span className="font-semibold text-white">{Math.min(currentPage * perPage, totalItems)}</span> dari <span className="font-semibold text-white">{totalItems}</span> transaksi
-              </p>
-              <select
-                className="input-field text-xs py-1 px-2 w-auto"
-                value={perPage}
-                onChange={(e) => {
-                  setPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-              >
-                <option value={10}>10 per hal</option>
-                <option value={15}>15 per hal</option>
-                <option value={25}>25 per hal</option>
-                <option value={50}>50 per hal</option>
-              </select>
-            </div>
+      {/* Transaction Table */}
+      <div className="card" style={{ overflow: 'hidden' }}>
+        {loading ? (
+          <div style={{ padding: 48, textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }} className="animate-pulse">💸</div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Memuat transaksi...</p>
+          </div>
+        ) : (
+          <>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: 'var(--bg-secondary)' }}>
+                  {[
+                    { key: 'description', label: 'Transaksi', align: 'left' },
+                    { key: 'category', label: 'Kategori', align: 'left' },
+                    { key: 'wallet', label: 'Dompet', align: 'left' },
+                    { key: 'date', label: 'Tanggal', align: 'left' },
+                    { key: 'amount', label: 'Jumlah', align: 'right' },
+                  ].map(col => (
+                    <th key={col.key}
+                      onClick={() => handleSort(col.key)}
+                      style={{
+                        padding: '12px 20px', textAlign: col.align, fontSize: 12, fontWeight: 600,
+                        color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em',
+                        cursor: 'pointer', transition: 'color 0.15s', userSelect: 'none',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
+                    >
+                      {col.label} {sortKey === col.key && (sortOrder === 'asc' ? '▲' : '▼')}
+                    </th>
+                  ))}
+                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Status</th>
+                  <th style={{ width: 48 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((tx) => {
+                  const cat = getCategoryStyle(tx.category?.name || 'Lainnya');
+                  return (
+                    <tr key={tx.id} style={{ borderTop: '1px solid var(--border-subtle)', transition: 'background 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '14px 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 16, backgroundColor: cat.bg, flexShrink: 0,
+                          }}>
+                            {tx.category?.icon || '📦'}
+                          </div>
+                          <div>
+                            <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{tx.description}</span>
+                            {tx.raw_input && tx.raw_input !== tx.description && (
+                              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '2px 0 0' }}>"{tx.raw_input}"</p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 20px', fontSize: 14, color: 'var(--text-secondary)' }}>{tx.category?.name || '-'}</td>
+                      <td style={{ padding: '14px 20px', fontSize: 14, color: 'var(--text-secondary)' }}>{tx.wallet?.name || '-'}</td>
+                      <td style={{ padding: '14px 20px', fontSize: 14, color: 'var(--text-secondary)' }}>{formatDate(tx.transaction_date)}</td>
+                      <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: tx.type === 'income' ? 'var(--color-income)' : 'var(--color-expense)' }}>
+                          {tx.type === 'income' ? '+' : '-'}{formatRupiah(tx.amount)}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 20px', textAlign: 'center' }}>
+                        {!tx.is_reviewed ? (
+                          <span className="badge-warning">⚠️ Review</span>
+                        ) : (
+                          tx.ai_confidence ? (
+                            <ConfidenceBadge percentage={Math.round(tx.ai_confidence * 100)} />
+                          ) : (
+                            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>✓</span>
+                          )
+                        )}
+                      </td>
+                      <td style={{ padding: '14px 20px', textAlign: 'center' }}>
+                        <button
+                          onClick={() => handleDelete(tx.id)}
+                          disabled={deleting === tx.id}
+                          style={{ background: 'none', border: 'none', fontSize: 14, color: 'var(--accent-red)', opacity: 0.5, cursor: 'pointer', transition: 'opacity 0.15s' }}
+                          onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                          onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
+                          title="Hapus transaksi"
+                        >
+                          {deleting === tx.id ? '...' : '🗑️'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
 
-            {totalPages > 1 && (
-              <div className="flex items-center gap-1.5">
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  className="btn-secondary py-1 px-3 text-xs disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  ◀ Sebelumnya
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`w-7 h-7 rounded-lg text-xs font-semibold flex items-center justify-center transition-all ${
-                      currentPage === page
-                        ? 'bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/20'
-                        : 'text-gray-400 hover:bg-white/[0.05] hover:text-white'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
-                <button
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  className="btn-secondary py-1 px-3 text-xs disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  Selanjutnya ▶
-                </button>
+            {sorted.length === 0 && (
+              <div style={{ padding: 48, textAlign: 'center' }}>
+                <p style={{ color: 'var(--text-secondary)' }}>{transactions.length === 0 ? 'Belum ada transaksi. Kirim pesan ke WhatsApp untuk mulai!' : 'Tidak ada transaksi ditemukan.'}</p>
               </div>
             )}
-          </div>
+
+            {/* Pagination Controls (BUG-008) */}
+            {totalItems > 0 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '16px 20px', background: 'var(--bg-secondary)',
+                borderTop: '1px solid var(--border-subtle)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
+                  <span>Tampilkan</span>
+                  <select
+                    value={perPage}
+                    onChange={(e) => setPerPage(Number(e.target.value))}
+                    style={{ padding: '4px 8px', borderRadius: 6, height: 32, fontSize: 13 }}
+                  >
+                    {[10, 15, 25, 50].map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                  <span>baris</span>
+                </div>
+
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  Menampilkan {totalItems === 0 ? 0 : (page - 1) * perPage + 1} - {Math.min(page * perPage, totalItems)} dari {totalItems} transaksi
+                </div>
+
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setPage(p => Math.max(p - 1, 1))}
+                    disabled={page === 1}
+                    style={{ padding: '6px 12px', fontSize: 12, height: 32, opacity: page === 1 ? 0.5 : 1, cursor: page === 1 ? 'default' : 'pointer' }}
+                  >
+                    ◀ Sebelumnya
+                  </button>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                    .map((p, idx, arr) => {
+                      const prev = arr[idx - 1];
+                      const showDots = prev && p - prev > 1;
+
+                      return (
+                        <div key={p} style={{ display: 'flex', gap: 6 }}>
+                          {showDots && <span style={{ padding: '6px 8px', color: 'var(--text-tertiary)' }}>...</span>}
+                          <button
+                            type="button"
+                            onClick={() => setPage(p)}
+                            style={{
+                              minWidth: 32, height: 32, padding: '0 6px', borderRadius: 6,
+                              border: p === page ? 'none' : '1px solid var(--border)',
+                              background: p === page ? 'var(--color-accent)' : 'transparent',
+                              color: p === page ? 'var(--color-accent-text)' : 'var(--text-secondary)',
+                              fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                            }}
+                          >
+                            {p}
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+                    disabled={page === totalPages}
+                    style={{ padding: '6px 12px', fontSize: 12, height: 32, opacity: page === totalPages ? 0.5 : 1, cursor: page === totalPages ? 'default' : 'pointer' }}
+                  >
+                    Selanjutnya ▶
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

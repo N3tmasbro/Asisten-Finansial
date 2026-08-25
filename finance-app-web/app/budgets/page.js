@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { formatRupiah } from '../../lib/utils';
 import api from '../../lib/api';
+import StatCard from '../../components/StatCard';
+import BudgetBar from '../../components/BudgetBar';
 
 export default function BudgetsPage() {
   const [budgets, setBudgets] = useState([]);
@@ -116,11 +118,11 @@ export default function BudgetsPage() {
   const availableCategories = categories.filter(c => !usedCategoryIds.includes(c.id));
 
   return (
-    <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-8">
+    <div style={{ padding: 32 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Budget</h1>
-          <p className="text-gray-400 text-sm mt-1">Tetapkan dan pantau batas pengeluaran bulanan</p>
+          <h1 className="font-poppins" style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>Budget</h1>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '4px 0 0' }}>Tetapkan dan pantau batas pengeluaran bulanan</p>
         </div>
         <button className="btn-primary" onClick={() => { setShowForm(!showForm); setEditBudget(null); setError(''); }}>
           + Tambah Budget
@@ -128,44 +130,38 @@ export default function BudgetsPage() {
       </div>
 
       {/* Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
-        <div className="stat-card accent">
-          <p className="text-xs font-medium text-gray-400 mb-1">Total Budget</p>
-          <p className="text-2xl font-extrabold tracking-tight">{formatRupiah(totalBudget)}</p>
-        </div>
-        <div className="stat-card expense">
-          <p className="text-xs font-medium text-gray-400 mb-1">Terpakai</p>
-          <p className="text-2xl font-extrabold tracking-tight text-rose-400">{formatRupiah(totalUsed)}</p>
-        </div>
-        <div className="stat-card income">
-          <p className="text-xs font-medium text-gray-400 mb-1">Sisa Budget</p>
-          <p className={`text-2xl font-extrabold tracking-tight ${totalRemaining < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-            {formatRupiah(Math.abs(totalRemaining))}
-            {totalRemaining < 0 && <span className="text-sm font-normal ml-1">melebihi!</span>}
-          </p>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
+        <StatCard title="Total Budget" value={formatRupiah(totalBudget)} subtitle="Per bulan" color="teal"
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>} />
+        <StatCard title="Terpakai" value={formatRupiah(totalUsed)} subtitle="Bulan ini" color="red"
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>} />
+        <StatCard
+          title="Sisa Budget"
+          value={formatRupiah(Math.abs(totalRemaining))}
+          subtitle={totalRemaining < 0 ? 'Melebihi budget!' : 'Tersisa'}
+          color={totalRemaining < 0 ? 'red' : 'green'}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>}
+        />
       </div>
 
       {success && (
-        <div className="p-3 rounded-lg text-sm text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 mb-4">
-          {success}
-        </div>
+        <div style={{ padding: 12, borderRadius: 10, fontSize: 14, color: 'var(--accent-green)', background: 'var(--accent-green-bg)', marginBottom: 16 }}>{success}</div>
       )}
 
       {/* Add Form */}
       {showForm && (
-        <div className="glass-card mb-6 animate-slide-up">
-          <h3 className="text-lg font-bold mb-4">Tambah Budget Baru</h3>
+        <div className="card animate-slide-up" style={{ padding: 24, marginBottom: 20 }}>
+          <h3 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 16px' }}>Tambah Budget Baru</h3>
           <form onSubmit={handleCreate}>
             {error && (
-              <div className="p-3 rounded-lg text-sm text-rose-400 bg-rose-400/10 border border-rose-400/20 mb-4">{error}</div>
+              <div style={{ padding: 12, borderRadius: 8, fontSize: 13, color: 'var(--accent-red)', background: 'var(--accent-red-bg)', marginBottom: 16 }}>{error}</div>
             )}
             {availableCategories.length === 0 ? (
-              <p className="text-gray-400 text-sm mb-4">Semua kategori sudah memiliki budget bulan ini.</p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16 }}>Semua kategori sudah memiliki budget bulan ini.</p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Kategori</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Kategori</label>
                   <select className="input-field" value={form.category_id}
                     onChange={e => setForm({ ...form, category_id: e.target.value })} required>
                     <option value="">Pilih kategori...</option>
@@ -175,19 +171,19 @@ export default function BudgetsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Batas Bulanan (Rp)</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Batas Bulanan (Rp)</label>
                   <input type="number" className="input-field" placeholder="1000000"
                     value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} min="1" required />
                 </div>
               </div>
             )}
-            <div className="flex gap-2 mt-4">
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               {availableCategories.length > 0 && (
-                <button type="submit" disabled={saving} className="btn-primary text-sm">
+                <button type="submit" disabled={saving} className="btn-primary" style={{ fontSize: 13 }}>
                   {saving ? 'Menyimpan...' : 'Simpan'}
                 </button>
               )}
-              <button type="button" className="btn-secondary text-sm" onClick={cancelForm}>Batal</button>
+              <button type="button" className="btn-secondary" style={{ fontSize: 13 }} onClick={cancelForm}>Batal</button>
             </div>
           </form>
         </div>
@@ -195,98 +191,54 @@ export default function BudgetsPage() {
 
       {/* Edit Form */}
       {editBudget && (
-        <div className="glass-card mb-6 animate-slide-up">
-          <h3 className="text-lg font-bold mb-4">Edit Budget: {editBudget.category?.name}</h3>
+        <div className="card animate-slide-up" style={{ padding: 24, marginBottom: 20 }}>
+          <h3 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 16px' }}>Edit Budget: {editBudget.category?.name}</h3>
           <form onSubmit={handleUpdate}>
             {error && (
-              <div className="p-3 rounded-lg text-sm text-rose-400 bg-rose-400/10 border border-rose-400/20 mb-4">{error}</div>
+              <div style={{ padding: 12, borderRadius: 8, fontSize: 13, color: 'var(--accent-red)', background: 'var(--accent-red-bg)', marginBottom: 16 }}>{error}</div>
             )}
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">Batas Bulanan (Rp)</label>
-              <input type="number" className="input-field max-w-xs" value={form.amount}
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>Batas Bulanan (Rp)</label>
+              <input type="number" className="input-field" value={form.amount} style={{ maxWidth: 300 }}
                 onChange={e => setForm({ ...form, amount: e.target.value })} min="1" required />
             </div>
-            <div className="flex gap-2 mt-4">
-              <button type="submit" disabled={saving} className="btn-primary text-sm">
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button type="submit" disabled={saving} className="btn-primary" style={{ fontSize: 13 }}>
                 {saving ? 'Menyimpan...' : 'Update'}
               </button>
-              <button type="button" className="btn-secondary text-sm" onClick={cancelForm}>Batal</button>
+              <button type="button" className="btn-secondary" style={{ fontSize: 13 }} onClick={cancelForm}>Batal</button>
             </div>
           </form>
         </div>
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center min-h-[200px]">
-          <div className="text-center">
-            <div className="text-4xl mb-3 animate-pulse">💰</div>
-            <p className="text-gray-400">Memuat budget...</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }} className="animate-pulse">💰</div>
+            <p style={{ color: 'var(--text-secondary)' }}>Memuat budget...</p>
           </div>
         </div>
       ) : budgets.length === 0 ? (
-        <div className="glass-card text-center py-12">
-          <div className="text-5xl mb-4">🎯</div>
-          <p className="text-gray-400 mb-2">Belum ada budget</p>
-          <p className="text-gray-500 text-sm">Buat budget bulanan untuk kategori pengeluaranmu</p>
+        <div className="card" style={{ textAlign: 'center', padding: 48 }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🎯</div>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>Belum ada budget</p>
+          <p style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>Buat budget bulanan untuk kategori pengeluaranmu</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {budgets.map((budget) => {
-            const usagePercent = budget.usage_percentage || 0;
-            const remaining = budget.remaining ?? (budget.amount - (budget.used || 0));
-            const isOverBudget = usagePercent >= 100;
-            const isWarning = usagePercent >= 75;
-
-            return (
-              <div key={budget.id} className="glass-card">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
-                      style={{ background: 'rgba(99,102,241,0.1)' }}>
-                      {budget.category?.icon || '📌'}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-white">{budget.category?.name || 'Kategori'}</p>
-                      <p className="text-xs text-gray-500">Budget bulanan</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="text-sm font-bold">
-                        {formatRupiah(budget.used || 0)}{' '}
-                        <span className="text-gray-500 font-normal">/ {formatRupiah(budget.amount)}</span>
-                      </p>
-                      <p className={`text-xs font-semibold ${isOverBudget ? 'text-rose-400' : isWarning ? 'text-amber-400' : 'text-emerald-400'}`}>
-                        {remaining > 0 ? `Sisa ${formatRupiah(remaining)}` : 'Melebihi budget!'}
-                      </p>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => openEdit(budget)}
-                        className="px-2 py-1 text-xs rounded-lg text-indigo-400 bg-indigo-400/10 hover:bg-indigo-400/20 transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(budget.id)}
-                        disabled={deleting === budget.id}
-                        className="px-2 py-1 text-xs rounded-lg text-rose-400 bg-rose-400/10 hover:bg-rose-400/20 transition-colors"
-                      >
-                        {deleting === budget.id ? '...' : 'Hapus'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div className="progress-bar">
-                  <div
-                    className={`progress-fill ${isOverBudget ? 'danger' : isWarning ? 'warning' : ''}`}
-                    style={{ width: `${Math.min(100, usagePercent)}%` }}
-                  />
-                </div>
-                <p className="text-xs text-gray-500 mt-1">{usagePercent.toFixed(1)}% terpakai</p>
-              </div>
-            );
-          })}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {budgets.map((budget) => (
+            <BudgetBar
+              key={budget.id}
+              name={budget.category?.name || 'Kategori'}
+              category={budget.category?.name || 'Lainnya'}
+              spent={budget.used || 0}
+              total={budget.amount}
+              icon={budget.category?.icon}
+              onEdit={() => openEdit(budget)}
+              onDelete={() => handleDelete(budget.id)}
+            />
+          ))}
         </div>
       )}
     </div>
