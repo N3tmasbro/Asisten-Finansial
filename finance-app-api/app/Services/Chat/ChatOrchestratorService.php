@@ -67,11 +67,23 @@ class ChatOrchestratorService
         if (!$user) {
             $this->whatsAppProvider->sendMessage(
                 $replyTo,
-                "Halo! 👋 Sepertinya kamu belum terdaftar. Daftar dulu di website kami ya! 🌐"
+                "Halo gan/sis! 👋 Lu belum terdaftar di database kami nih.\n\n" .
+                "Btw, nomor ini lagi testing jadi bot finance yang bisa ngerti chatmu soal duit? Tinggal ketik2 waee:\n\n" .
+                "\"Beli kopi 20rb\" → kerekam otomatis\n" .
+                "\"Gue udah abis berapa sih?\" → AI jawab\n" .
+                "\"Kapan saldo gue habis?\" → AI tau\n\n" .
+                "Bisa Apa:\n" .
+                "💬 Chat biasa, AI yang parse (gak usah isi form ribet)\n" .
+                "📊 Liat pengeluaran tren-nya\n" .
+                "🤖 Dapet saran hemat dari AI\n" .
+                "💰 Tau kapan duit bakal abis\n" .
+                "📱 Langsung di WhatsApp!\n\n" .
+                "Pengen? Daftar di sini: [link]\n" .
+                "30 detik doang bro! ⚡\n\n" .
+                "Mau info lebih? Reply 'INFO' atau 'BANTUAN'"
             );
             return;
         }
-
         // Step 0: Idempotency check — prevent duplicate processing of same WA message
         if ($this->isDuplicateMessage($dto->messageId)) {
             Log::info('Duplicate WA message ignored', ['message_id' => $dto->messageId]);
@@ -459,6 +471,12 @@ class ChatOrchestratorService
             }
         }
 
+        // Append keyword tips if not present and not an interactive poll
+        if (!str_contains($responseText, '💡 *Contoh') && !isset($result['pending_confirmation'])) {
+            $tips = $this->getHelpfulTipsFooter($intent);
+            $responseText .= "\n\n" . $tips;
+        }
+
         // Log outgoing message with metadata
         ChatMessage::create([
             'user_id' => $user->id,
@@ -478,6 +496,51 @@ class ChatOrchestratorService
         } else {
             $this->whatsAppProvider->sendMessage($replyTo, $responseText);
         }
+    }
+
+    /**
+     * Generate a short keyword tips footer to make it easier for users to interact.
+     */
+    private function getHelpfulTipsFooter(?MessageIntent $intent): string
+    {
+        $sampleSets = [
+            'transaction' => [
+                '• *"Bulan ini habis berapa?"*',
+                '• *"Koreksi yang tadi jadi 25rb"*',
+                '• *"Saldo cash berapa?"*',
+            ],
+            'query' => [
+                '• *"Pengeluaran makan bulan ini"*',
+                '• *"Kapan saldo gue habis?"*',
+                '• *"Tips hemat"*',
+            ],
+            'manage' => [
+                '• *"Cash gw 1jt"*',
+                '• *"Buat wallet GoPay"*',
+                '• *"Daftar wallet"*',
+            ],
+            'inspect' => [
+                '• *"Beli nasi goreng 15rb"*',
+                '• *"Riwayat transaksi"*',
+                '• *"Budget makan bulan ini"*',
+            ],
+            'default' => [
+                '• *"Beli kopi 20rb"*',
+                '• *"Bulan ini habis berapa?"*',
+                '• *"Saldo semua wallet"*',
+            ],
+        ];
+
+        $key = match ($intent) {
+            MessageIntent::AddTransaction => 'transaction',
+            MessageIntent::QueryReport => 'query',
+            MessageIntent::ManageRecords => 'manage',
+            MessageIntent::InspectRecords => 'inspect',
+            default => 'default',
+        };
+
+        $lines = $sampleSets[$key];
+        return "💡 *Contoh perintah lain:*\n" . implode("\n", $lines);
     }
 
     // ─────────────────────────────────────────────────────
