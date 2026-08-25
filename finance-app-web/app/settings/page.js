@@ -281,7 +281,7 @@ export default function SettingsPage() {
           </div>
         ) : isConnected ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16, borderRadius: 10, background: 'var(--accent-green-bg)' }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent-green)', boxShadow: '0 0 8px var(--accent-green-bg)' }} />
+            <div className="shrink-0" style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent-green)', boxShadow: '0 0 8px var(--accent-green-bg)' }} />
             <div>
               <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Terhubung ✅</p>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '2px 0 0' }}>
@@ -291,7 +291,7 @@ export default function SettingsPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16, borderRadius: 10, background: 'var(--accent-red-bg)' }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent-red)', boxShadow: '0 0 8px var(--accent-red-bg)' }} />
+            <div className="shrink-0" style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent-red)', boxShadow: '0 0 8px var(--accent-red-bg)' }} />
             <div>
               <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Tidak Terhubung ❌</p>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '2px 0 0' }}>
@@ -320,6 +320,7 @@ export default function SettingsPage() {
               opacity: loggingOut ? 0.5 : 1,
               transition: 'all 0.15s',
             }}
+            className="shrink-0"
           >
             {loggingOut ? 'Logging out...' : 'Logout'}
           </button>

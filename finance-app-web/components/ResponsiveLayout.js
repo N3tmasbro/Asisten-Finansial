@@ -52,7 +52,7 @@ export default function ResponsiveLayout({ children }) {
       </div>
 
       {/* Main Content Area */}
-      <main className="flex-1 min-h-screen pt-[60px] md:pt-0 md:ml-[200px] w-full overflow-x-hidden">
+      <main className="flex-1 min-h-screen min-w-0 pt-[60px] md:pt-0 md:ml-[200px] w-full overflow-x-hidden">
         {children}
       </main>
     </div>

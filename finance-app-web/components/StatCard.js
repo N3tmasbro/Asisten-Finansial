@@ -38,7 +38,8 @@ export default function StatCard({ title, value, subtitle, icon, color }) {
           <div className="font-poppins" style={{
             fontSize: 24, fontWeight: 700, color: c.accent,
             lineHeight: 1.2, letterSpacing: '-0.01em', marginBottom: 4,
-          }}>
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+          }} title={value}>
             {value}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{subtitle}</div>

@@ -261,8 +261,8 @@ export default function DashboardPage() {
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{tx.category?.name || '-'} · {tx.wallet?.name || '-'}</div>
                     </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: tx.type === 'income' ? 'var(--color-income)' : 'var(--color-expense)' }}>
+                    <div style={{ textAlign: 'right', flexShrink: 0, maxWidth: '45%' }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: tx.type === 'income' ? 'var(--color-income)' : 'var(--color-expense)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={formatRupiah(tx.amount)}>
                         {tx.type === 'income' ? '+' : '-'}{formatRupiah(tx.amount)}
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>

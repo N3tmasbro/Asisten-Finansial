@@ -468,10 +468,10 @@ export default function TransactionsPage() {
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: '14px 20px', fontSize: 14, color: 'var(--text-secondary)' }}>{tx.category?.name || '-'}</td>
-                      <td style={{ padding: '14px 20px', fontSize: 14, color: 'var(--text-secondary)' }}>{tx.wallet?.name || '-'}</td>
-                      <td style={{ padding: '14px 20px', fontSize: 14, color: 'var(--text-secondary)' }}>{formatDate(tx.transaction_date)}</td>
-                      <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                      <td style={{ padding: '14px 20px', fontSize: 14, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{tx.category?.name || '-'}</td>
+                      <td style={{ padding: '14px 20px', fontSize: 14, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{tx.wallet?.name || '-'}</td>
+                      <td style={{ padding: '14px 20px', fontSize: 14, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{formatDate(tx.transaction_date)}</td>
+                      <td style={{ padding: '14px 20px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <span style={{ fontSize: 14, fontWeight: 700, color: tx.type === 'income' ? 'var(--color-income)' : 'var(--color-expense)' }}>
                           {tx.type === 'income' ? '+' : '-'}{formatRupiah(tx.amount)}
                         </span>
