@@ -43,7 +43,7 @@ export default function LandingClient() {
 
       {/* Hero Section */}
       <section className="hero-section">
-        <span className="eyebrow">🚀 Gratis untuk selamanya</span>
+        <span className="eyebrow">🚀 FREE</span>
         <h1>
           Catat Keuanganmu
           <span>via WhatsApp</span>
