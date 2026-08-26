@@ -568,9 +568,12 @@ class ChatOrchestratorService
         }
 
         // $action === 'send'
+        // IMPORTANT: Record FIRST, then send. This prevents a race condition where
+        // the greeting is sent but the DB record fails (e.g. schema error), causing
+        // every subsequent message to also trigger a greeting (infinite loop).
         try {
-            $this->whatsAppProvider->sendMessage($replyTo, self::UNREGISTERED_GREETING);
             $this->unregisteredUserService->recordGreetingSent($phone, $dto->message);
+            $this->whatsAppProvider->sendMessage($replyTo, self::UNREGISTERED_GREETING);
         } catch (\Exception $e) {
             Log::error('[UnregisteredUser] Failed to send greeting', [
                 'phone' => $phone,
