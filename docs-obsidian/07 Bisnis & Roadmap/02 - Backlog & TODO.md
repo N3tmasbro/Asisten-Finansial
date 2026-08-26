@@ -24,6 +24,8 @@ Daftar hal yang **belum selesai** atau **perlu didiskusikan** lebih lanjut.
 - [x] **[BUG-012] Format Tabel ASCII Berantakan di Mobile & Routing Keyword Budget/Dompet** — FIXED: Redesain balasan WA menjadi mobile-responsive bullet-list emoji, memperluas keyword `sisa budget` & `sis budget`, dan mencegat pesan tanpa nominal.
 - [x] **[BUG-013] Inkonsistensi Template Kandidat Hapus & Fitur Hapus Semua Transaksi** — FIXED: Menyertakan template emoji bertingkat `1️⃣`-`🔟` pada daftar kandidat hapus/edit, menambah dukungan query rentang tanggal & limit, dan menambahkan fitur *Hapus Semua Transaksi* dengan *strict confirmation prompt*.
 - [x] **[BUG-014] Rate Limiter Nomor Tidak Dikenal Gagal (Spam Balasan)** — FIXED: Mengubah `user_id` menjadi `nullable` di tabel `chat_messages` dan memperbaiki *race condition* agar database menyimpan log sebelum mengirim pesan WhatsApp.
+- [ ] **[BUG-015] Chatbot Mengirim `{}` ke WhatsApp saat Gemini Rate Limit Habis** — `GeminiProvider::executeGeminiRequest()` me-return string `'{}'` ketika semua fallback model habis kuota (HTTP 429), dan string ini langsung dikirim ke WhatsApp tanpa validasi. Fix: tambahkan guard di `callGemini()` dan `logAndSend()` agar mengembalikan pesan error yang ramah pengguna.
+- [ ] **[BUG-016] Intent Classifier & Entity Extractor Gagal pada Frasa Bahasa Indonesia Tertentu** — Ditemukan dari stress test 100 transaksi: 7 kasus *intent unclear* (frasa: `sedekah`, `print skripsi`, `ngopi`, `bayar spotify`, dll.) dan 3 kasus *entity extraction failed* (`bayar fotokopi tugas`, `dapet duit freelance`). Fix: tambah *few-shot examples* di System Prompt Gemini dan investigasi routing bug (pesan dengan confidence 0.99 tetap masuk handler `unclear`).
 
 ---
 
