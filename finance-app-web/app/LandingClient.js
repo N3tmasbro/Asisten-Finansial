@@ -26,7 +26,6 @@ export default function LandingClient() {
           Asisten <b>Finansial</b>
         </span>
         <nav>
-          <Link href="#features" className="nav-text" style={{ textDecoration: 'none' }}>Fitur</Link>
           <button className="public-theme-toggle" onClick={toggleTheme}>
             <span>{isDark ? '🌙' : '☀️'}</span>
             <span>{isDark ? 'Dark' : 'Light'}</span>
@@ -36,7 +35,7 @@ export default function LandingClient() {
           ) : (
             <>
               <Link href="/login" className="nav-text" style={{ textDecoration: 'none' }}>Login</Link>
-              <Link href="/register" className="button button-small" style={{ textDecoration: 'none' }}>Daftar Gratis</Link>
+              <Link href="/register" className="button button-small" style={{ textDecoration: 'none' }}>Register</Link>
             </>
           )}
         </nav>
@@ -60,7 +59,7 @@ export default function LandingClient() {
             </Link>
           ) : (
             <Link href="/register" className="button" style={{ textDecoration: 'none', padding: '0 24px', minHeight: 44, fontSize: 14 }}>
-              Mulai Gratis →
+              Coba Sekarang →
             </Link>
           )}
           <Link href="#features" className="button button-secondary" style={{ textDecoration: 'none', padding: '0 24px', minHeight: 44, fontSize: 14 }}>

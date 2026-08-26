@@ -388,7 +388,7 @@ button { font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.15
 .landing-nav nav { display: flex; align-items: center; gap: 16px; }
 .nav-text { color: var(--text-secondary); background: transparent; font-size: 13px; padding: 9px 2px; }
 .nav-text:hover, .auth-switch button:hover { color: var(--teal); }
-.button { display: inline-flex; align-items: center; justify-content: center; min-height: 37px; padding: 0 18px; border-radius: 7px; background: linear-gradient(105deg, var(--teal), var(--teal-light)); color: var(--color-accent-text); font-size: 12px; font-weight: 700; box-shadow: 0 6px 16px color-mix(in srgb, var(--teal) 26%, transparent); text-decoration: none; transition: transform 0.16s ease, box-shadow 0.16s ease; }
+.button { display: inline-flex; align-items: center; justify-content: center; min-height: 37px; padding: 0 18px; border-radius: 7px; background: linear-gradient(105deg, var(--teal), var(--teal-light)); color: var(--color-accent-text); font-size: 12px; font-weight: 700; box-shadow: 0 6px 16px color-mix(in srgb, var(--teal) 26%, transparent); text-decoration: none; transition: transform 0.16s ease, box-shadow 0.16s ease; white-space: nowrap; }
 .button:hover { transform: translateY(-2px); box-shadow: 0 10px 21px color-mix(in srgb, var(--teal) 38%, transparent); }
 .button-small { min-height: 33px; padding: 0 16px; font-size: 11px; }
 .button-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); box-shadow: none; }
