@@ -162,7 +162,7 @@ class GeminiProvider implements AIProviderInterface
 Kamu adalah classifier pesan untuk aplikasi pencatat keuangan. Tugasmu HANYA menentukan intent dari pesan user.
 
 Intent yang tersedia:
-- "add_transaction": user ingin mencatat transaksi BARU yang belum ada di sistem (contoh: "isi bensin 200 ribu", "beli kopi 20rb", "gajian 5 juta", "makan siang 35rb")
+- "add_transaction": user ingin mencatat transaksi BARU yang belum ada di sistem (contoh: "isi bensin 200 ribu", "beli kopi 20rb", "gajian 5 juta", "makan siang 35rb", "print skripsi 50rb", "ngopi di starbucks 55rb", "sedekah jumat 20rb", "bayar spotify 49rb", "bayar fotokopi tugas 10rb", "beli buku novel 80rb", "dapet duit freelance 750rb")
 - "query_report": user ingin laporan atau statistik keuangan (contoh: "bulan ini habis berapa?", "pengeluaran makan minggu ini", "ringkasan bulan ini", "total pengeluaran")
 - "correction": user ingin MENGUBAH transaksi yang SUDAH ADA di sistem — ditandai kata: "yang tadi", "yang kemarin", "harusnya", "salah", "koreksi", "ubah", "ganti", "ralat", "bukan" (contoh: "yang kopi tadi harusnya Hiburan", "yang bensin salah harusnya 80rb", "koreksi yang tadi jadi 50rb", "bukan BCA tapi Cash")
 - "delete_transaction": user ingin MENGHAPUS transaksi yang sudah ada (contoh: "hapus yang bensin tadi", "delete transaksi terakhir", "batalkan yang kopi", "hilangkan transaksi bensin", "hapus semua transaksi")
@@ -189,6 +189,9 @@ ATURAN PENTING — baca ini dengan seksama:
    - "BCA 5jt" = MANAGE
    - "cash 1jt, BCA 3jt" = MANAGE
 7. Bahasa gaul yang umum: "gw"=saya, "ge"=saya, "lo"=kamu, "doang"=hanya, "sementara"=sedangkan, "sisanya"=sisa
+8. Pesan yang menyebut AKTIVITAS + NOMINAL adalah ADD_TRANSACTION meskipun kata kerjanya tidak lazim:
+   - "print", "fotokopi", "sedekah", "ngopi", "bayar spotify", "beli buku" = add_transaction
+   - "dapet duit", "dapet uang", "freelance" + nominal = add_transaction (income)
 
 CONTOH NEGATIF (jangan salah klasifikasi):
 - "yang kopi tadi harusnya Hiburan" → BUKAN add_transaction, ini CORRECTION
@@ -198,6 +201,15 @@ CONTOH NEGATIF (jangan salah klasifikasi):
 - "hapus yang bensin tadi" → BUKAN correction, ini DELETE
 - "cash gw 1jt" → BUKAN add_transaction, ini MANAGE (set saldo wallet)
 - "BCA 3jt" → BUKAN add_transaction, ini MANAGE (set saldo wallet)
+
+CONTOH POSITIF (ini adalah add_transaction):
+- "print skripsi 50rb" → add_transaction (expense)
+- "sedekah jumat 20rb" → add_transaction (expense)
+- "ngopi di starbucks 55rb" → add_transaction (expense)
+- "bayar spotify 49rb" → add_transaction (expense)
+- "bayar fotokopi tugas 10rb" → add_transaction (expense)
+- "beli buku novel 80rb" → add_transaction (expense)
+- "dapet duit freelance 750rb" → add_transaction (income)
 - "cash 1jt sisanya BCA" → BUKAN add_transaction, ini MANAGE (set saldo multi-wallet)
 PROMPT;
 
@@ -219,7 +231,7 @@ Aturan:
 1. SELALU kembalikan array transaksi (walau hanya 1).
 2. Pisahkan multi-transaksi berdasar kata penghubung: "sama", "terus", "juga", "dan", koma, baris baru.
 3. Konversi angka: "20rb"/"20ribu"/"20k" = 20000, "200rb" = 200000, "1.5jt"/"1,5juta" = 1500000.
-4. Default type: "expense". Gunakan "income" jika ada kata: "gajian", "dapat", "terima", "masuk", "transfer masuk", "dapet".
+4. Default type: "expense". Gunakan "income" jika ada kata: "gajian", "dapat", "terima", "masuk", "transfer masuk", "dapet", "dapet duit", "dapet uang", "freelance", "bonus", "thr".
 5. Pilih kategori dari daftar yang tersedia. Jika tidak yakin, gunakan "Lainnya".
 6. Setiap transaksi punya confidence masing-masing (0.0-1.0).
 7. Ambil deskripsi singkat dari konteks pesan.
@@ -232,6 +244,15 @@ Aturan:
    Isi clarification_reason dengan alasan singkat jika needs_clarification = true.
 10. Jika user menyebut nama wallet (e.g. "dari BCA", "pakai Dana", "cash"), isi field wallet.
 11. Jika user menyebut tanggal (e.g. "kemarin", "tadi malam", "tanggal 15"), isi field date dalam format YYYY-MM-DD.
+
+CONTOH EKSTRAKSI (untuk referensi):
+- "print skripsi 50rb" → description: "Print skripsi", amount: 50000, type: "expense", category: "Pendidikan"
+- "bayar fotokopi tugas 10rb" → description: "Fotokopi tugas", amount: 10000, type: "expense", category: "Pendidikan"
+- "ngopi di starbucks 55rb" → description: "Ngopi", amount: 55000, type: "expense", category: "Makan & Minum", notes: "di Starbucks"
+- "sedekah jumat 20rb" → description: "Sedekah jumat", amount: 20000, type: "expense", category: "Lainnya"
+- "bayar spotify 49rb" → description: "Spotify", amount: 49000, type: "expense", category: "Hiburan"
+- "beli buku novel 80rb" → description: "Buku novel", amount: 80000, type: "expense", category: "Hiburan"
+- "dapet duit freelance 750rb" → description: "Freelance", amount: 750000, type: "income", category: "Freelance/Sampingan"
 PROMPT;
 
         $data = $this->callGeminiStructured($systemPrompt, $message, $this->transactionSchema());
@@ -482,6 +503,11 @@ PROMPT;
 
         $responseText = $this->executeGeminiRequest($payload);
 
+        if ($responseText === null || $responseText === '{}') {
+            Log::warning('Gemini returned null/empty — returning empty result for structured call.');
+            return [];
+        }
+
         return $this->parseJsonResponse($responseText);
     }
 
@@ -506,14 +532,22 @@ PROMPT;
             ],
         ];
 
-        return $this->executeGeminiRequest($payload);
+        $result = $this->executeGeminiRequest($payload);
+
+        if ($result === null || $result === '{}') {
+            return "Maaf, asisten sedang sibuk 😅 Coba lagi sebentar ya!";
+        }
+
+        return $result;
     }
 
     /**
      * Execute HTTP request to Gemini API with fallback model chain.
      * Shared by both callGemini and callGeminiStructured.
+     *
+     * @return string|null The response text, or null if all models failed.
      */
-    private function executeGeminiRequest(array $payload): string
+    private function executeGeminiRequest(array $payload): ?string
     {
         foreach ($this->fallbackModels as $model) {
             $url = "{$this->baseApiUrl}/{$model}:generateContent?key={$this->apiKey}";
@@ -526,7 +560,12 @@ PROMPT;
                 if ($response->successful()) {
                     $candidates = $response->json('candidates', []);
                     if (!empty($candidates)) {
-                        $text = $candidates[0]['content']['parts'][0]['text'] ?? '{}';
+                        $text = $candidates[0]['content']['parts'][0]['text'] ?? null;
+
+                        if (empty($text)) {
+                            // Empty text from API — try next model
+                            continue;
+                        }
 
                         if ($model !== $this->fallbackModels[0]) {
                             Log::info('Gemini fallback used', ['model' => $model]);
@@ -555,7 +594,7 @@ PROMPT;
                     'status' => $status,
                     'body'   => $response->body(),
                 ]);
-                return '{}';
+                return null;
 
             } catch (\Exception $e) {
                 Log::warning('Gemini model exception, trying fallback', [
@@ -568,7 +607,7 @@ PROMPT;
 
         // All models exhausted
         Log::error('All Gemini fallback models exhausted — no response available.');
-        return '{}';
+        return null;
     }
 
     /**

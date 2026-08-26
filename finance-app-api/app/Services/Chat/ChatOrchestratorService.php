@@ -463,6 +463,11 @@ class ChatOrchestratorService
         $responseText = is_string($result) ? $result : ($result['text'] ?? '');
         $metadata = [];
 
+        // Guard: never send empty or raw '{}' to users
+        if (empty($responseText) || $responseText === '{}') {
+            $responseText = "Maaf, ada gangguan teknis 😓 Coba kirim ulang ya!";
+        }
+
         if (is_array($result)) {
             if (isset($result['pending_confirmation'])) {
                 $metadata['pending_confirmation'] = $result['pending_confirmation'];
